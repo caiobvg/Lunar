@@ -1,535 +1,23 @@
-import tkinter as tk
-from tkinter import ttk, scrolledtext, messagebox
 import customtkinter as ctk
-from PIL import Image, ImageDraw, ImageTk, ImageFilter
-import os
-import sys
 import threading
 import time
 import queue
-import math
-import random
-from datetime import datetime, timedelta
-import psutil
-import subprocess
-import winreg
-import tempfile
-import glob
-from pathlib import Path
-import shutil
+from datetime import datetime
+import os
+import sys
 
-# Configure custom theme
-ctk.set_appearance_mode("Dark")
-ctk.set_default_color_theme("blue")
+# Add project root to path for imports
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-class ParticleSystem:
-    def __init__(self, canvas, width, height):
-        self.canvas = canvas
-        self.width = width
-        self.height = height
-        self.particles = []
-        self.connections = []
-        
-    def create_particles(self, count=50):
-        for _ in range(count):
-            particle = {
-                'x': random.uniform(0, self.width),
-                'y': random.uniform(0, self.height),
-                'vx': random.uniform(-0.5, 0.5),
-                'vy': random.uniform(-0.5, 0.5),
-                'radius': random.uniform(1, 3),
-                'color': random.choice(['#6b21ff', '#4a1c6d', '#2d1152', "#141425"]),
-                'id': None
-            }
-            self.particles.append(particle)
-    
-    def draw_particles(self):
-        for particle in self.particles:
-            x1 = particle['x'] - particle['radius']
-            y1 = particle['y'] - particle['radius']
-            x2 = particle['x'] + particle['radius']
-            y2 = particle['y'] + particle['radius']
-            particle['id'] = self.canvas.create_oval(x1, y1, x2, y2, 
-                                                   fill=particle['color'], 
-                                                   outline="", tags="particle")
-    
-    def draw_connections(self):
-        self.connections.clear()
-        for i, p1 in enumerate(self.particles):
-            for j, p2 in enumerate(self.particles[i+1:], i+1):
-                distance = math.sqrt((p1['x']-p2['x'])**2 + (p1['y']-p2['y'])**2)
-                if distance < 100:
-                    # Use solid color instead of alpha
-                    color = '#36365a'  # Solid light purple
-                    line_id = self.canvas.create_line(p1['x'], p1['y'], p2['x'], p2['y'],
-                                                     fill=color, width=1, tags="connection")
-                    self.connections.append(line_id)
-    
-    def update(self):
-        for particle in self.particles:
-            particle['x'] += particle['vx']
-            particle['y'] += particle['vy']
-            
-            # Bounce off edges
-            if particle['x'] <= 0 or particle['x'] >= self.width:
-                particle['vx'] *= -1
-            if particle['y'] <= 0 or particle['y'] >= self.height:
-                particle['vy'] *= -1
-            
-            # Update canvas position
-            if particle['id']:
-                x1 = particle['x'] - particle['radius']
-                y1 = particle['y'] - particle['radius']
-                x2 = particle['x'] + particle['radius']
-                y2 = particle['y'] + particle['radius']
-                self.canvas.coords(particle['id'], x1, y1, x2, y2)
+# Import the cleaner
+from cleaners.system_cleaner import SystemCleaner
 
-class GlassFrame(ctk.CTkFrame):
-    def __init__(self, *args, **kwargs):
-        # Remove alpha parameter since CustomTkinter doesn't support it
-        self.alpha = kwargs.pop('alpha', 200)
-        super().__init__(*args, **kwargs)
-        # Apply a slightly lighter/darker color based on alpha for glass effect
-        self._adjust_color_for_effect()
-        
-    def _adjust_color_for_effect(self):
-        """Adjust color to simulate glass effect without alpha"""
-        current_color = self.cget("fg_color")
-        if current_color == "transparent":
-            return
-            
-        # Convert hex to RGB and adjust brightness based on alpha
-        if isinstance(current_color, str) and current_color.startswith('#'):
-            r = int(current_color[1:3], 16)
-            g = int(current_color[3:5], 16)
-            b = int(current_color[5:7], 16)
-            
-            # Adjust brightness based on alpha (simulate glass effect)
-            if self.alpha > 150:  # More opaque
-                r = min(255, r + 10)
-                g = min(255, g + 10)
-                b = min(255, b + 10)
-            else:  # More transparent
-                r = max(0, r - 10)
-                g = max(0, g - 10)
-                b = max(0, b - 10)
-                
-            new_color = f"#{r:02x}{g:02x}{b:02x}"
-            self.configure(fg_color=new_color)
-
-class AnimatedButton(ctk.CTkButton):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.default_fg_color = self.cget("fg_color")
-        self.hover_fg_color = "#4a1c6d"
-        self.animation_running = False
-        self.bind('<Enter>', self.on_enter)
-        self.bind('<Leave>', self.on_leave)
-        
-    def on_enter(self, event):
-        self.configure(fg_color=self.hover_fg_color)
-        
-    def on_leave(self, event):
-        if not self.animation_running:
-            self.configure(fg_color=self.default_fg_color)
-    
-    def start_pulse(self):
-        self.animation_running = True
-        self._pulse_animation()
-    
-    def stop_pulse(self):
-        self.animation_running = False
-        self.configure(fg_color=self.default_fg_color)
-    
-    def _pulse_animation(self):
-        if not self.animation_running:
-            return
-            
-        colors = ["#2d1152", "#3a1668", "#471c7e", "#542194", "#6127aa"]
-        current = 0
-        
-        def update_color():
-            nonlocal current
-            if self.animation_running:
-                self.configure(fg_color=colors[current])
-                current = (current + 1) % len(colors)
-                self.after(200, update_color)
-        
-        update_color()
-
-class ToastNotification:
-    def __init__(self, parent, message, toast_type="info"):
-        self.parent = parent
-        self.message = message
-        self.toast_type = toast_type
-        
-        self.toast = ctk.CTkToplevel(parent)
-        self.toast.overrideredirect(True)
-        self.toast.attributes("-topmost", True)
-        self.toast.attributes("-alpha", 0.0)
-        
-        self.setup_toast()
-        self.animate_in()
-    
-    def setup_toast(self):
-        colors = {
-            "info": ("#6b21ff", "#1a1a2e"),
-            "success": ("#00ff88", "#1a2e1a"),
-            "warning": ("#ffaa00", "#2e2a1a"),
-            "error": ("#ff4444", "#2e1a1a")
-        }
-        
-        bg_color, frame_color = colors.get(self.toast_type, colors["info"])
-        
-        self.toast.configure(fg_color=frame_color)
-        self.toast.geometry("300x60")
-        
-        # Position in top right
-        x = self.parent.winfo_rootx() + self.parent.winfo_width() - 320
-        y = self.parent.winfo_rooty() + 50
-        self.toast.geometry(f"+{x}+{y}")
-        
-        frame = ctk.CTkFrame(self.toast, fg_color=bg_color, corner_radius=10)
-        frame.pack(fill="both", padx=10, pady=10)
-        
-        label = ctk.CTkLabel(frame, text=self.message, text_color="white")
-        label.pack(expand=True, fill="both", padx=20, pady=15)
-    
-    def animate_in(self):
-        for i in range(10):
-            alpha = i * 0.1
-            self.toast.attributes("-alpha", alpha)
-            self.toast.update()
-            time.sleep(0.02)
-        
-        self.toast.after(3000, self.animate_out)
-    
-    def animate_out(self):
-        for i in range(10, -1, -1):
-            alpha = i * 0.1
-            self.toast.attributes("-alpha", alpha)
-            self.toast.update()
-            time.sleep(0.02)
-        
-        self.toast.destroy()
-
-class CircularProgress(ctk.CTkCanvas):
-    def __init__(self, parent, size=200, **kwargs):
-        super().__init__(parent, width=size, height=size, **kwargs)
-        self.size = size
-        self.center = size // 2
-        self.radius = size // 2 - 10
-        self.progress = 0
-        
-        self.configure(bg="#0a0a1a", highlightthickness=0)
-        self.draw_background()
-        self.draw_progress()
-    
-    def draw_background(self):
-        self.create_oval(10, 10, self.size-10, self.size-10, 
-                        outline="#1a1a2e", width=8, fill="#0a0a1a")
-    
-    def draw_progress(self):
-        self.delete("progress")
-        angle = 360 * self.progress / 100
-        
-        self.create_arc(10, 10, self.size-10, self.size-10,
-                       start=90, extent=-angle,
-                       outline="#6b21ff", width=8, style="arc", tags="progress")
-        
-        # Progress text
-        self.create_text(self.center, self.center, text=f"{int(self.progress)}%",
-                        fill="white", font=("Segoe UI", 20, "bold"), tags="progress")
-    
-    def set_progress(self, value):
-        self.progress = max(0, min(100, value))
-        self.draw_progress()
-
-class SystemStats:
-    @staticmethod
-    def get_cpu_usage():
-        return psutil.cpu_percent(interval=0.1)
-    
-    @staticmethod
-    def get_memory_usage():
-        memory = psutil.virtual_memory()
-        return memory.percent
-    
-    @staticmethod
-    def get_disk_usage():
-        disk = psutil.disk_usage('/')
-        return disk.percent
-
-class RealSpoofer:
-    """Classe REAL de spoofing - substitui a simulação"""
-    
-    def __init__(self, log_callback):
-        self.log_callback = log_callback
-        self.total_operations = 0
-        self.completed_operations = 0
-    
-    def add_log(self, message):
-        """Adiciona log via callback"""
-        if self.log_callback:
-            self.log_callback(message)
-    
-    def get_progress(self):
-        """Calcula progresso real"""
-        if self.total_operations == 0:
-            return 0
-        return (self.completed_operations / self.total_operations) * 100
-    
-    def kill_processes(self):
-        """Mata processos do Discord, FiveM, Steam REAL"""
-        self.add_log("[REAL] Terminating target processes...")
-        try:
-            processes_to_kill = ['discord', 'fivem', 'steam', 'steamwebhelper', 'epicgameslauncher']
-            killed = 0
-            
-            for proc in psutil.process_iter(['name', 'pid']):
-                try:
-                    proc_name = proc.info['name'].lower() if proc.info['name'] else ''
-                    for target in processes_to_kill:
-                        if target in proc_name:
-                            proc.kill()
-                            killed += 1
-                            self.add_log(f"[REAL] Killed: {proc.info['name']} (PID: {proc.info['pid']})")
-                            break
-                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                    continue
-            
-            self.add_log(f"[REAL] {killed} processes terminated")
-            return True
-        except Exception as e:
-            self.add_log(f"[ERROR] Failed to kill processes: {str(e)}")
-            return False
-    
-    def spoof_discord_rpc(self):
-        """SPOOF REAL do Discord RPC"""
-        self.add_log("[REAL] Starting Discord RPC spoofing...")
-        
-        discord_paths = [
-            os.path.join(os.environ['APPDATA'], 'discord'),
-            os.path.join(os.environ['LOCALAPPDATA'], 'Discord')
-        ]
-        
-        spoofed_count = 0
-        for base_path in discord_paths:
-            if os.path.exists(base_path):
-                try:
-                    # Encontra pastas de versão do Discord
-                    for item in os.listdir(base_path):
-                        if item.replace('.', '').isdigit():  # Versões como 0.0.309
-                            modules_path = os.path.join(base_path, item, 'modules')
-                            if os.path.exists(modules_path):
-                                # Procura por pastas discord_rpc
-                                for module_item in os.listdir(modules_path):
-                                    if 'discord_rpc' in module_item.lower():
-                                        old_path = os.path.join(modules_path, module_item)
-                                        # Cria novo nome aleatório
-                                        new_name = f"discord_rpc_{random.randint(10000, 99999)}"
-                                        new_path = os.path.join(modules_path, new_name)
-                                        
-                                        try:
-                                            if os.path.exists(old_path):
-                                                os.rename(old_path, new_path)
-                                                spoofed_count += 1
-                                                self.add_log(f"[REAL] Renamed: {module_item} -> {new_name}")
-                                        except Exception as e:
-                                            self.add_log(f"[WARNING] Could not rename {module_item}: {str(e)}")
-                except Exception as e:
-                    self.add_log(f"[ERROR] Error processing {base_path}: {str(e)}")
-        
-        # Também limpa cache do Discord
-        discord_cache = os.path.join(os.environ['LOCALAPPDATA'], 'Discord', 'Cache')
-        if os.path.exists(discord_cache):
-            try:
-                shutil.rmtree(discord_cache, ignore_errors=True)
-                self.add_log("[REAL] Cleared Discord cache")
-            except Exception as e:
-                self.add_log(f"[WARNING] Could not clear Discord cache: {str(e)}")
-        
-        self.add_log(f"[REAL] Discord RPC spoofing complete: {spoofed_count} items modified")
-        return spoofed_count > 0
-    
-    def clean_fivem_cache(self):
-        """Limpeza REAL do FiveM"""
-        self.add_log("[REAL] Cleaning FiveM cache...")
-        
-        fivem_paths = [
-            os.path.join(os.environ['LOCALAPPDATA'], 'FiveM', 'FiveM.app', 'cache'),
-            os.path.join(os.environ['LOCALAPPDATA'], 'FiveM', 'FiveM.app', 'logs'),
-            os.path.join(os.environ['LOCALAPPDATA'], 'FiveM', 'FiveM.app', 'crashes'),
-            os.path.join(os.environ['APPDATA'], 'CitizenFX'),
-            os.path.join(os.environ['LOCALAPPDATA'], 'DigitalEntitlements')
-        ]
-        
-        cleaned_count = 0
-        for path in fivem_paths:
-            if os.path.exists(path):
-                try:
-                    shutil.rmtree(path, ignore_errors=True)
-                    cleaned_count += 1
-                    self.add_log(f"[REAL] Cleared: {os.path.basename(path)}")
-                except Exception as e:
-                    self.add_log(f"[WARNING] Could not clear {path}: {str(e)}")
-        
-        # Limpa arquivos específicos do FiveM
-        fivem_app_path = os.path.join(os.environ['LOCALAPPDATA'], 'FiveM', 'FiveM.app')
-        if os.path.exists(fivem_app_path):
-            try:
-                for pattern in ['*.bin', '*.dll', '*.ini', '*.XML']:
-                    for file_path in glob.glob(os.path.join(fivem_app_path, pattern)):
-                        try:
-                            os.remove(file_path)
-                            self.add_log(f"[REAL] Removed: {os.path.basename(file_path)}")
-                        except:
-                            continue
-            except Exception as e:
-                self.add_log(f"[WARNING] Error cleaning FiveM files: {str(e)}")
-        
-        self.add_log(f"[REAL] FiveM cache cleaned: {cleaned_count} locations")
-        return cleaned_count > 0
-    
-    def reset_network(self):
-        """Reset REAL de rede"""
-        self.add_log("[REAL] Resetting network configuration...")
-        
-        commands = [
-            ('Flushing DNS', ['ipconfig', '/flushdns']),
-            ('Resetting Winsock', ['netsh', 'winsock', 'reset']),
-            ('Resetting IP', ['netsh', 'int', 'ip', 'reset']),
-            ('Resetting Firewall', ['netsh', 'advfirewall', 'reset']),
-        ]
-        
-        success_count = 0
-        for name, cmd in commands:
-            try:
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, shell=True)
-                if result.returncode == 0:
-                    success_count += 1
-                    self.add_log(f"[REAL] {name}: Success")
-                else:
-                    self.add_log(f"[WARNING] {name}: Failed - {result.stderr}")
-            except Exception as e:
-                self.add_log(f"[WARNING] {name}: Error - {str(e)}")
-        
-        self.add_log(f"[REAL] Network reset: {success_count}/{len(commands)} operations")
-        return success_count > 0
-    
-    def clean_registry(self):
-        """Limpeza REAL do registro"""
-        self.add_log("[REAL] Cleaning registry entries...")
-        
-        registry_entries = [
-            (winreg.HKEY_CURRENT_USER, r'Software\CitizenFX'),
-            (winreg.HKEY_CURRENT_USER, r'Software\FiveM'),
-            (winreg.HKEY_CURRENT_USER, r'Software\Rockstar Games'),
-            (winreg.HKEY_CURRENT_USER, r'Software\Valve\Steam'),
-        ]
-        
-        cleaned_count = 0
-        for hive, key_path in registry_entries:
-            try:
-                # Tenta abrir a chave para verificar se existe
-                try:
-                    key = winreg.OpenKey(hive, key_path, 0, winreg.KEY_READ)
-                    winreg.CloseKey(key)
-                    # Se existe, tenta deletar
-                    winreg.DeleteKey(hive, key_path)
-                    cleaned_count += 1
-                    self.add_log(f"[REAL] Registry cleaned: {key_path}")
-                except FileNotFoundError:
-                    self.add_log(f"[INFO] Registry key not found: {key_path}")
-                except PermissionError:
-                    self.add_log(f"[WARNING] No permission to delete: {key_path}")
-            except Exception as e:
-                self.add_log(f"[WARNING] Could not clean registry {key_path}: {str(e)}")
-        
-        self.add_log(f"[REAL] Registry cleaning: {cleaned_count} entries")
-        return cleaned_count > 0
-    
-    def clean_system_temp(self):
-        """Limpeza de arquivos temporários do sistema"""
-        self.add_log("[REAL] Cleaning system temporary files...")
-        
-        temp_paths = [
-            os.environ.get('TEMP', ''),
-            os.environ.get('TMP', ''),
-            os.path.join(os.environ['LOCALAPPDATA'], 'Temp'),
-            r'C:\Windows\Temp'
-        ]
-        
-        cleaned_count = 0
-        for temp_path in temp_paths:
-            if os.path.exists(temp_path):
-                try:
-                    for item in os.listdir(temp_path):
-                        item_path = os.path.join(temp_path, item)
-                        try:
-                            if os.path.isfile(item_path):
-                                os.remove(item_path)
-                                cleaned_count += 1
-                            elif os.path.isdir(item_path):
-                                shutil.rmtree(item_path, ignore_errors=True)
-                                cleaned_count += 1
-                        except:
-                            continue
-                except Exception as e:
-                    self.add_log(f"[WARNING] Error cleaning {temp_path}: {str(e)}")
-        
-        self.add_log(f"[REAL] System temp cleaned: {cleaned_count} items")
-        return cleaned_count > 0
-    
-    def execute_real_spoofing(self):
-        """Executa spoofing REAL"""
-        self.add_log("=" * 60)
-        self.add_log("[REAL] 🚀 STARTING REAL SPOOFING PROTOCOL")
-        self.add_log("[REAL] This will perform ACTUAL system modifications")
-        self.add_log("=" * 60)
-        
-        # Define operações reais
-        operations = [
-            ("Terminating processes", self.kill_processes),
-            ("Cleaning system temp", self.clean_system_temp),
-            ("Spoofing Discord RPC", self.spoof_discord_rpc),
-            ("Cleaning FiveM cache", self.clean_fivem_cache),
-            ("Cleaning registry", self.clean_registry),
-            ("Resetting network", self.reset_network),
-        ]
-        
-        self.total_operations = len(operations)
-        self.completed_operations = 0
-        
-        results = []
-        for op_name, op_function in operations:
-            self.add_log(f"[REAL] Executing: {op_name}")
-            try:
-                result = op_function()
-                results.append(result)
-                self.completed_operations += 1
-                progress = self.get_progress()
-                self.add_log(f"[REAL] Progress: {self.completed_operations}/{self.total_operations} ({progress:.1f}%)")
-            except Exception as e:
-                self.add_log(f"[ERROR] Operation {op_name} failed: {str(e)}")
-                results.append(False)
-        
-        success_count = sum(1 for r in results if r)
-        
-        self.add_log("=" * 60)
-        self.add_log(f"[REAL] SPOOFING COMPLETE: {success_count}/{self.total_operations} operations successful")
-        
-        if success_count >= 4:  # Pelo menos 4/6 operações bem sucedidas
-            self.add_log("[REAL] ✅ SPOOFING SUCCESSFUL!")
-            self.add_log("[REAL] Discord RPC has been modified")
-            self.add_log("[REAL] FiveM cache has been cleared") 
-            self.add_log("[REAL] System identity has been spoofed")
-        else:
-            self.add_log("[REAL] ⚠️  Partial success - some operations failed")
-        
-        self.add_log("=" * 60)
-        
-        return success_count >= 4  # Considera sucesso se maioria das operações funcionou
+# Import GUI components
+from .components.particles import ParticleSystem
+from .components.buttons import AnimatedButton
+from .components.progress import CircularProgress
+from .components.toast import ToastNotification
+from .components.stats import SystemStats
 
 class MidnightSpooferGUI:
     def __init__(self):
@@ -546,8 +34,8 @@ class MidnightSpooferGUI:
         # Queue for thread-safe communication
         self.log_queue = queue.Queue()
         
-        # ✅ AGORA USA O SPOOFER REAL!
-        self.spoofer = RealSpoofer(log_callback=self.add_log_realtime)
+        # Use the SystemCleaner
+        self.cleaner = SystemCleaner(realtime_callback=self.add_log_realtime)
         
         # Control variables
         self.cleaning_in_progress = False
@@ -896,8 +384,11 @@ class MidnightSpooferGUI:
         """Start the spoofing sequence with confirmation"""
         if self.cleaning_in_progress:
             return
+        
+        # Import messagebox here to avoid circular imports
+        from tkinter import messagebox
             
-        # Confirmação MAIS CLARA sobre ações REAIS
+        # Confirmation dialog
         confirm = messagebox.askyesno(
             "🚨 CONFIRM REAL SPOOFING",
             "⚠️  WARNING: This will PERFORM REAL SYSTEM MODIFICATIONS:\n\n"
@@ -918,7 +409,7 @@ class MidnightSpooferGUI:
         self.start_spoofing()
 
     def start_spoofing(self):
-        """Inicia spoofing REAL"""
+        """Start REAL spoofing"""
         self.cleaning_in_progress = True
         self.spoof_button.configure(state="disabled", text="🔄 REAL SPOOFING...")
         self.spoof_button.start_pulse()
@@ -928,21 +419,21 @@ class MidnightSpooferGUI:
         
         self.show_toast("Starting REAL spoofing...", "info")
         
-        # Inicia em thread separada
+        # Start in separate thread
         thread = threading.Thread(target=self.execute_spoofing)
         thread.daemon = True
         thread.start()
 
     def execute_spoofing(self):
-        """✅ AGORA EXECUTA SPOOFING REAL - SEM SIMULAÇÃO!"""
+        """Execute REAL spoofing using SystemCleaner"""
         try:
             self.add_log_ui("=" * 60)
             self.add_log_ui("[REAL] 🚀 INITIATING REAL SPOOFING PROTOCOL")
             self.add_log_ui("[REAL] This will actually modify system files")
             self.add_log_ui("=" * 60)
             
-            # ✅ EXECUTA SPOOFING REAL!
-            success = self.spoofer.execute_real_spoofing()
+            # ✅ EXECUTE REAL SPOOFING using the cleaner!
+            success = self.cleaner.execute_real_spoofing()
             
             if success:
                 self.total_spoofs += 1
@@ -1016,6 +507,7 @@ class MidnightSpooferGUI:
         self.show_toast("Settings panel", "info")
 
     def show_about(self):
+        from tkinter import messagebox
         about_text = """Midnight Spoofer v2.0 - REAL
 
 Advanced system identity protection
@@ -1032,30 +524,3 @@ for full functionality."""
     def run(self):
         """Start application"""
         self.root.mainloop()
-
-def check_admin_privileges():
-    """Check if running as administrator"""
-    try:
-        import ctypes
-        return ctypes.windll.shell32.IsUserAnAdmin()
-    except:
-        return False
-
-def main():
-    # Verifica privilégios de administrador
-    if not check_admin_privileges():
-        response = messagebox.askyesno(
-            "Administrator Rights Required", 
-            "❌ Midnight Spoofer requires Administrator privileges!\n\n"
-            "REAL spoofing features may not work without admin rights.\n\n"
-            "Do you want to continue anyway?",
-            icon='warning'
-        )
-        if not response:
-            return
-    
-    app = MidnightSpooferGUI()
-    app.run()
-
-if __name__ == "__main__":
-    main()

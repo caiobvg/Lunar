@@ -1,39 +1,39 @@
-import os
+# main.py
+import tkinter as tk
+from tkinter import messagebox
+import customtkinter as ctk
 import sys
-import ctypes
-import tkinter.messagebox as messagebox
+import os
 
-def is_admin():
-    """Check if program is running as administrator"""
+# Add src to path
+sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+
+from src.gui.main_window import MidnightSpooferGUI
+
+def check_admin_privileges():
+    """Check if running as administrator"""
     try:
+        import ctypes
         return ctypes.windll.shell32.IsUserAnAdmin()
     except:
         return False
 
 def main():
-    # Check if running as admin
-    if not is_admin():
-        # Request elevation
-        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
-        sys.exit()
+    # Check administrator privileges
+    if not check_admin_privileges():
+        response = messagebox.askyesno(
+            "Administrator Rights Required", 
+            "❌ Midnight Spoofer requires Administrator privileges!\n\n"
+            "REAL spoofing features may not work without admin rights.\n\n"
+            "Do you want to continue anyway?",
+            icon='warning'
+        )
+        if not response:
+            return
     
-    # Add src to path for imports
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    src_path = os.path.join(current_dir, 'src')
-    if src_path not in sys.path:
-        sys.path.insert(0, src_path)
-    
-    # Import and execute GUI
-    try:
-        from gui.main_window import MidnightSpooferGUI
-        app = MidnightSpooferGUI()
-        app.run()
-    except ImportError as e:
-        messagebox.showerror("Import Error", 
-                           f"Error loading modules:\n{str(e)}\n\n"
-                           f"Make sure the folder structure is correct.")
-    except Exception as e:
-        messagebox.showerror("Error", f"Error starting application:\n{str(e)}")
+    # Start the application
+    app = MidnightSpooferGUI()
+    app.run()
 
 if __name__ == "__main__":
     main()
