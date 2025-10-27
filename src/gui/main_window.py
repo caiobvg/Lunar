@@ -12,7 +12,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from cleaners.system_cleaner import SystemCleaner
 from utils.hardware_reader import HardwareReader
-from utils.logger import logger  # Import the unified logger
+from utils.logger import logger
 from .components.particles import ParticleSystem
 from .components.buttons import AnimatedButton
 from .components.progress import CircularProgress
@@ -23,7 +23,7 @@ from .components.stats import SystemStats
 class MidnightSpooferGUI:
     def __init__(self):
         self.root = ctk.CTk()
-        self.root.title("Midnight Spoofer v2.0 - REAL SPOOFING")
+        self.root.title("Midnight Spoofer Beta")
         self.root.geometry("1400x900")
         self.root.resizable(True, True)
         self.root.configure(fg_color="#0a0a1a")
@@ -32,7 +32,7 @@ class MidnightSpooferGUI:
         
         # Remove old queue system, use logger subscription
         self.log_queue = queue.Queue()
-        self.cleaner = SystemCleaner()  # Remove realtime_callback
+        self.cleaner = SystemCleaner()
         
         # Register GUI as logger subscriber
         logger.add_subscriber(self.add_log_ui)
@@ -58,12 +58,12 @@ class MidnightSpooferGUI:
         }
         
         self.setup_ui()
-        self.process_log_queue()  # Keep for backward compatibility during transition
+        self.process_log_queue()
         self.update_system_stats()
         
         # Use logger instead of direct UI calls
         logger.log_info("Midnight Spoofer Premium INITIALIZED", "SYSTEM")
-        logger.log_real("REAL spoofing engine loaded", "SECURITY")
+        logger.log_info("Spoofing engine loaded", "SECURITY")
         logger.log_success("Discord/FiveM spoofing ready", "READY")
         logger.log_warning("Run as Administrator for full functionality", "INFO")
         
@@ -113,8 +113,8 @@ class MidnightSpooferGUI:
             tag = "warning"
         elif "[SYSTEM]" in message or "[STATUS]" in message or "[INFO]" in message:
             tag = "system"
-        elif "[REAL]" in message or "[HARDWARE]" in message or "[SECURITY]" in message:
-            tag = "real"
+        elif "[HARDWARE]" in message or "[SECURITY]" in message:
+            tag = "hardware"
         else:
             tag = "info"
         
@@ -320,7 +320,7 @@ class MidnightSpooferGUI:
         spoofing_content = ctk.CTkFrame(self.spoofing_frame, fg_color="transparent")
         spoofing_content.pack(fill="both", expand=True, padx=20, pady=(0, 20))
         
-        # Obtém dados REAIS do hardware
+        # Obtém dados do hardware
         if self.hw_reader:
             try:
                 hw_data = self.hw_reader.get_all_hardware_ids()
@@ -347,7 +347,7 @@ class MidnightSpooferGUI:
                 'mac': 'N/A'
             }
         
-        # Mapeamento dos dados reais
+        # Mapeamento dos dados de hardware
         hardware_data = [
             ("Disk C:", hw_data.get('disk_c', 'N/A')),
             ("Disk D:", hw_data.get('disk_d', 'N/A')),
@@ -557,7 +557,7 @@ class MidnightSpooferGUI:
         self.logs_text.tag_config("success", foreground="#00ff88")
         self.logs_text.tag_config("warning", foreground="#ffaa00")
         self.logs_text.tag_config("system", foreground="#6b21ff")
-        self.logs_text.tag_config("real", foreground="#b0b0ff")
+        self.logs_text.tag_config("hardware", foreground="#b0b0ff")
         self.logs_text.tag_config("info", foreground="#e0e0ff")
 
     def update_system_stats(self):
@@ -608,15 +608,15 @@ class MidnightSpooferGUI:
         from tkinter import messagebox
             
         confirm = messagebox.askyesno(
-            "🚨 CONFIRM REAL SPOOFING",
-            "⚠️  WARNING: This will PERFORM REAL SYSTEM MODIFICATIONS:\n\n"
+            "🚨 CONFIRM SPOOFING",
+            "⚠️  WARNING: This will PERFORM SYSTEM MODIFICATIONS:\n\n"
             "• TERMINATE Discord, FiveM, Steam processes\n" 
             "• RENAME Discord RPC folders to break tracking\n"
             "• CLEAN FiveM cache and registry traces\n"
             "• RESET network configurations\n"
             "• DELETE temporary system files\n\n"
-            "✅ This is NOT a simulation - real changes will be made!\n\n"
-            "Continue with REAL spoofing protocol?",
+            "✅ This is NOT a simulation - changes will be made!\n\n"
+            "Continue with spoofing protocol?",
             icon='warning'
         )
         
@@ -628,17 +628,17 @@ class MidnightSpooferGUI:
 
     def start_spoofing(self):
         self.cleaning_in_progress = True
-        self.spoof_button.configure(state="disabled", text="🔄 REAL SPOOFING...")
+        self.spoof_button.configure(state="disabled", text="🔄 SPOOFING...")
         self.spoof_button.start_pulse()
         self.clear_logs()
-        self.update_status("Executing REAL spoofing protocol")
+        self.update_status("Executing spoofing protocol")
         self.circular_progress.set_progress(0)
         
         enabled_modules = [module for module, state in self.toggle_states.items() if state]
         if enabled_modules:
             logger.log_info(f"Active: {', '.join(enabled_modules)}", "MODULES")
         
-        self.show_toast("Starting REAL spoofing...", "info")
+        self.show_toast("Starting spoofing...", "info")
         
         thread = threading.Thread(target=self.execute_spoofing)
         thread.daemon = True
@@ -646,9 +646,9 @@ class MidnightSpooferGUI:
 
     def execute_spoofing(self):
         try:
-            logger.log_real("🚀 INITIATING REAL SPOOFING PROTOCOL", "REAL")
-            logger.log_real("This will actually modify system files", "REAL")
-            logger.log_real("=" * 50, "REAL")
+            logger.log_info("🚀 INITIATING SPOOFING PROTOCOL", "SPOOFING")
+            logger.log_info("This will modify system files", "SPOOFING")
+            logger.log_info("=" * 50, "SPOOFING")
             
             # Mostra valores ANTES do spoof
             if self.hw_reader:
@@ -675,9 +675,9 @@ class MidnightSpooferGUI:
                         logger.log_warning(f"Could not refresh hardware display: {str(e)}", "HARDWARE")
                 
                 self.circular_progress.set_progress(100)
-                self.update_status("REAL spoofing completed!", is_success=True)
+                self.update_status("Spoofing completed!", is_success=True)
                 self.show_toast("Discord successfully spoofed!", "success")
-                logger.log_success("✅ REAL SPOOFING COMPLETED!", "SUCCESS")
+                logger.log_success("✅ SPOOFING COMPLETED!", "SUCCESS")
                 logger.log_success("Discord RPC has been modified", "SECURITY")
                 logger.log_success("FiveM cache has been cleared", "SECURITY")
             else:
@@ -714,33 +714,43 @@ class MidnightSpooferGUI:
             logger.log_error(f"Export failed: {str(e)}", "ERROR")
 
     def show_dashboard(self):
+        """TODO: Integrar painel de dashboard com estatísticas detalhadas"""
         self.show_toast("Dashboard loaded", "info")
+        logger.log_info("Dashboard panel opened - TODO: Implement detailed statistics", "NAVIGATION")
 
     def show_spoof_tools(self):
+        """TODO: Integrar ferramentas avançadas de spoofing"""
         self.show_toast("Spoof tools panel", "info")
+        logger.log_info("Spoof tools panel opened - TODO: Implement advanced spoofing tools", "NAVIGATION")
 
     def show_history(self):
+        """TODO: Integrar histórico de operações"""
         self.show_toast("History panel", "info")
+        logger.log_info("History panel opened - TODO: Implement operation history", "NAVIGATION")
 
     def show_settings(self):
+        """TODO: Integrar configurações avançadas"""
         self.show_toast("Settings panel", "info")
+        logger.log_info("Settings panel opened - TODO: Implement advanced settings", "NAVIGATION")
 
     def show_about(self):
         from tkinter import messagebox
         about_text = """
-        Midnight Spoofer v2.0
+        Midnight Spoofer Beta
         Advanced system identity protection
         
-        • Real Discord RPC spoofing
+        • Discord RPC spoofing
         • FiveM cache cleaning
         • Network configuration reset
         • Registry sanitization
-        • Real hardware ID detection
+        • Hardware ID detection
         
         ⚠️ Always run as Administrator
         for full functionality.
         
         📌 Educational purposes only
+        
+        🚧 Under active development
         """   
         messagebox.showinfo("About Midnight Spoofer", about_text)
 

@@ -100,17 +100,6 @@ class MidnightLogger:
         
         self._notify_subscribers(f"[{context}] {message}", "DEBUG")
         return formatted
-    
-    def log_real(self, message: str, context: str = "REAL"):
-        """Special log for real spoofing operations"""
-        formatted = self._format_message(message, "REAL")
-        try:
-            self.logger.info(f"[{context}] {message}")
-        except Exception as e:
-            print(f"LOG FALLBACK: {message}")
-        
-        self._notify_subscribers(f"[{context}] {message}", "REAL")
-        return formatted
 
 # Global logger instance
 logger = MidnightLogger()
