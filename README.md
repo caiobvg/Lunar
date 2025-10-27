@@ -19,7 +19,7 @@ Advanced system identity protection and cleaning utility for FiveM and gaming en
 
 ## Installation
 
-1. Clone the repository
+Clone the repository
 ```bash
 git clone https://github.com/caiobvg/MidnightSpoofer.git
 cd MidnightSpoofer
