@@ -509,7 +509,7 @@ class MidnightSpooferGUI:
     def show_about(self):
         from tkinter import messagebox
         about_text = """
-        Midnight Spoofer v2.0 - REAL
+        Midnight Spoofer v2.0
         Advanced system identity protection
         • Real Discord RPC spoofing
         • FiveM cache cleaning
