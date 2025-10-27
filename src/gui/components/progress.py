@@ -1,3 +1,5 @@
+# src/gui/components/progress.py
+
 import customtkinter as ctk
 
 class CircularProgress(ctk.CTkCanvas):

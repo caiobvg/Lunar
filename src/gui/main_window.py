@@ -1,3 +1,5 @@
+# src/gui/main_window.py
+
 import customtkinter as ctk
 import threading
 import time
@@ -43,7 +45,6 @@ class MidnightSpooferGUI:
         self.current_theme = "purple"
         
         # Statistics
-        self.total_spoofs = 0
         self.last_spoof_time = None
         
         # Setup interface
@@ -177,13 +178,13 @@ class MidnightSpooferGUI:
         theme_options.set("Purple")
 
     def setup_header(self):
-        """Setup header with stats cards"""
+        """Setup header com stats cards e status"""
         header_frame = ctk.CTkFrame(self.main_content, fg_color="transparent", height=120)
         header_frame.grid(row=0, column=0, sticky="ew", pady=(0, 20))
         header_frame.grid_propagate(False)
         header_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
         
-        # Stats cards - use solid colors
+        # Stats cards
         self.cpu_card = self.create_stat_card(header_frame, "CPU", "0%", 0, "#6b21ff")
         self.cpu_card.grid(row=0, column=0, padx=(0, 10), sticky="ew")
         
@@ -193,8 +194,9 @@ class MidnightSpooferGUI:
         self.disk_card = self.create_stat_card(header_frame, "Disk", "0%", 2, "#ffaa00")
         self.disk_card.grid(row=0, column=2, padx=5, sticky="ew")
         
-        self.spoofs_card = self.create_stat_card(header_frame, "Total Spoofs", "0", 3, "#ff4444")
-        self.spoofs_card.grid(row=0, column=3, padx=(10, 0), sticky="ew")
+        # STATUS CARD (no lugar de Total Spoofs)
+        self.status_card = self.create_status_card(header_frame)
+        self.status_card.grid(row=0, column=3, padx=(10, 0), sticky="ew")
 
     def create_stat_card(self, parent, title, value, column, color):
         """Create a stat card with progress bar"""
@@ -217,8 +219,33 @@ class MidnightSpooferGUI:
         
         return card
 
+    def create_status_card(self, parent):
+        """Create status card com indicador visual"""
+        card = ctk.CTkFrame(parent, fg_color="#1a1a2e", corner_radius=15)
+        
+        # Title
+        title_label = ctk.CTkLabel(card, text="STATUS", text_color="#b0b0ff",
+                                  font=ctk.CTkFont(size=12))
+        title_label.pack(anchor="w", padx=15, pady=(15, 5))
+        
+        # Content frame for dot and text
+        content_frame = ctk.CTkFrame(card, fg_color="transparent")
+        content_frame.pack(anchor="w", padx=15, pady=(0, 10), fill="x")
+        
+        # Colored dot (initially green)
+        self.status_dot = ctk.CTkLabel(content_frame, text="●", text_color="#00ff88",
+                                      font=ctk.CTkFont(size=16))
+        self.status_dot.pack(side="left", padx=(0, 8))
+        
+        # Status text
+        self.status_text = ctk.CTkLabel(content_frame, text="System Ready", text_color="white",
+                                       font=ctk.CTkFont(size=14, weight="bold"))
+        self.status_text.pack(side="left")
+        
+        return card
+
     def setup_dashboard(self):
-        """Setup main dashboard"""
+        """Setup main dashboard com informações de hardware"""
         # Content area
         content_frame = ctk.CTkFrame(self.main_content, fg_color="transparent")
         content_frame.grid(row=1, column=0, sticky="nsew")
@@ -253,21 +280,63 @@ class MidnightSpooferGUI:
         )
         self.spoof_button.pack(pady=(0, 20))
         
-        # Status display - use solid color
-        self.status_frame = ctk.CTkFrame(action_frame, fg_color="#1a1a2e", corner_radius=15, height=80)
-        self.status_frame.pack(side="right", fill="both", expand=True)
-        self.status_frame.pack_propagate(False)
+        # Hardware Info Display (no lugar do status_frame)
+        self.hardware_frame = ctk.CTkFrame(action_frame, fg_color="#1a1a2e", corner_radius=15, height=200)
+        self.hardware_frame.pack(side="right", fill="both", expand=True)
+        self.hardware_frame.pack_propagate(False)
         
-        self.status_label = ctk.CTkLabel(
-            self.status_frame,
-            text="🟢 SYSTEM READY - AWAITING COMMAND",
-            font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"),
-            text_color="#00ff88"
-        )
-        self.status_label.pack(expand=True)
+        # Setup hardware info
+        self.setup_hardware_info()
         
         # Logs area
         self.setup_logs_area(content_frame)
+
+    def setup_hardware_info(self):
+        """Setup painel de informações de hardware"""
+        # Title
+        title_label = ctk.CTkLabel(
+            self.hardware_frame,
+            text="🖥️ HARDWARE INFORMATION",
+            font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
+            text_color="#6b21ff"
+        )
+        title_label.pack(anchor="w", padx=15, pady=(15, 10))
+        
+        # Content frame
+        content_frame = ctk.CTkFrame(self.hardware_frame, fg_color="transparent")
+        content_frame.pack(fill="both", expand=True, padx=15, pady=(0, 15))
+        
+        # Grid para organizar as informações
+        content_frame.grid_columnconfigure(0, weight=1)
+        content_frame.grid_columnconfigure(1, weight=1)
+        
+        # Hardware data - usando os valores da sua imagem
+        hardware_data = [
+            ("Dick C:", "32062287", 0),
+            ("Dick D:", "E8F5E18", 1),
+            ("Motherboard:", "ZVP3YO2H0Z5TENV", 2),
+            ("Smbios UUID:", "ST/C33FA-9FDF-SE39-E3FB-F8EBFE473A26", 3),
+            ("Chassis:", "6VD1BBR2JG86RB", 4),
+            ("Bios:", "007EZTK9LTU4HM2", 5),
+            ("Cpu:", "L945TZUA98WNCLUKYC55P", 6),
+            ("Mac:", "BA6F5QES88AC", 7)
+        ]
+        
+        # Criar labels para cada informação
+        self.hardware_labels = {}
+        for label_text, value, row in hardware_data:
+            frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+            frame.grid(row=row, column=0, sticky="ew", pady=2)
+            
+            label = ctk.CTkLabel(frame, text=label_text, text_color="#b0b0ff",
+                               font=ctk.CTkFont(size=11))
+            label.pack(side="left")
+            
+            value_label = ctk.CTkLabel(frame, text=value, text_color="#ffffff",
+                                     font=ctk.CTkFont(size=11, weight="bold"))
+            value_label.pack(side="left", padx=(5, 0))
+            
+            self.hardware_labels[label_text] = value_label
 
     def setup_logs_area(self, parent):
         """Setup advanced logs area"""
@@ -344,17 +413,16 @@ class MidnightSpooferGUI:
         self.logs_text.tag_config("info", foreground="#e0e0ff")
 
     def update_system_stats(self):
-        """Update system statistics in real-time"""
+        """Update system statistics em tempo real"""
         try:
             cpu_usage = SystemStats.get_cpu_usage()
             memory_usage = SystemStats.get_memory_usage()
             disk_usage = SystemStats.get_disk_usage()
             
-            # Update cards
+            # Update apenas os 3 cards originais
             self.update_stat_card(self.cpu_card, f"{cpu_usage:.1f}%", cpu_usage/100)
             self.update_stat_card(self.memory_card, f"{memory_usage:.1f}%", memory_usage/100)
             self.update_stat_card(self.disk_card, f"{disk_usage:.1f}%", disk_usage/100)
-            self.update_stat_card(self.spoofs_card, str(self.total_spoofs), min(self.total_spoofs/10, 1))
             
         except Exception as e:
             print(f"Error updating stats: {e}")
@@ -369,6 +437,18 @@ class MidnightSpooferGUI:
                     widget.configure(text=value)
             elif isinstance(widget, ctk.CTkProgressBar):
                 widget.set(progress)
+
+    def update_status(self, message, is_error=False, is_success=False):
+        """Update status no card de status"""
+        if is_error:
+            dot_color = "#ff4444"
+        elif is_success:
+            dot_color = "#00ff88"
+        else:
+            dot_color = "#ffaa00"
+            
+        self.status_dot.configure(text_color=dot_color)
+        self.status_text.configure(text=message)
 
     def show_toast(self, message, toast_type="info"):
         """Show toast notification"""
@@ -436,7 +516,6 @@ class MidnightSpooferGUI:
             success = self.cleaner.execute_real_spoofing()
             
             if success:
-                self.total_spoofs += 1
                 self.last_spoof_time = datetime.now()
                 
                 self.circular_progress.set_progress(100)
@@ -445,7 +524,6 @@ class MidnightSpooferGUI:
                 self.add_log_ui("[SUCCESS] ✅ REAL SPOOFING COMPLETED!")
                 self.add_log_ui("[SECURITY] Discord RPC has been modified")
                 self.add_log_ui("[SECURITY] FiveM cache has been cleared")
-                self.add_log_ui(f"[STATS] Total real spoofs: {self.total_spoofs}")
             else:
                 self.circular_progress.set_progress(75)
                 self.update_status("Some operations failed", is_error=True)
@@ -460,20 +538,6 @@ class MidnightSpooferGUI:
             self.cleaning_in_progress = False
             self.spoof_button.configure(state="normal", text="🚀 START SPOOFING")
             self.spoof_button.stop_pulse()
-
-    def update_status(self, message, is_error=False, is_success=False):
-        """Update status in interface"""
-        if is_error:
-            color = "#ff4444"
-            icon = "🔴"
-        elif is_success:
-            color = "#00ff88"
-            icon = "🟢"
-        else:
-            color = "#ffaa00"
-            icon = "🟡"
-            
-        self.status_label.configure(text=f"{icon} {message}", text_color=color)
 
     def clear_logs(self):
         """Clear logs"""

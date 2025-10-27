@@ -1,3 +1,5 @@
+# src/gui/components/particles.py
+
 import random
 import math
 

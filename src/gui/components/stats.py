@@ -1,3 +1,5 @@
+# src/gui/components/stats.py
+
 import psutil
 
 class SystemStats:

@@ -1,3 +1,4 @@
+# src/gui/components/toast.py
 import customtkinter as ctk
 import time
 

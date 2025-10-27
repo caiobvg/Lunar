@@ -1,4 +1,4 @@
-# main.py
+# run.py
 import tkinter as tk
 from tkinter import messagebox
 import customtkinter as ctk

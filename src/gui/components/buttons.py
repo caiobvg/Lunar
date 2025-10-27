@@ -1,3 +1,5 @@
+# src/gui/components/buttons.py
+
 import customtkinter as ctk
 
 class AnimatedButton(ctk.CTkButton):
