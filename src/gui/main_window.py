@@ -11,11 +11,13 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from cleaners.system_cleaner import SystemCleaner
+from utils.hardware_reader import HardwareReader
 from .components.particles import ParticleSystem
 from .components.buttons import AnimatedButton
 from .components.progress import CircularProgress
 from .components.toast import ToastNotification
 from .components.stats import SystemStats
+
 
 class MidnightSpooferGUI:
     def __init__(self):
@@ -29,6 +31,13 @@ class MidnightSpooferGUI:
         
         self.log_queue = queue.Queue()
         self.cleaner = SystemCleaner(realtime_callback=self.add_log_realtime)
+        
+        # Inicializa o leitor de hardware
+        try:
+            self.hw_reader = HardwareReader()
+        except Exception as e:
+            print(f"Warning: Hardware reader initialization failed: {e}")
+            self.hw_reader = None
         
         self.cleaning_in_progress = False
         self.sidebar_expanded = True
@@ -51,6 +60,12 @@ class MidnightSpooferGUI:
         self.add_log_ui("[SECURITY] REAL spoofing engine loaded")
         self.add_log_ui("[READY] Discord/FiveM spoofing ready")
         self.add_log_ui("[INFO] Run as Administrator for full functionality")
+        
+        # Move hardware initialization logs to after UI is fully set up
+        if self.hw_reader:
+            self.add_log_ui("[HARDWARE] Hardware reader initialized successfully")
+        else:
+            self.add_log_ui("[WARNING] Hardware reader failed - using fallback data")
 
     def center_window(self):
         self.root.update_idletasks()
@@ -75,6 +90,11 @@ class MidnightSpooferGUI:
             self.root.after(100, self.process_log_queue)
 
     def add_log_ui(self, message):
+        # Check if logs_text exists before trying to use it
+        if not hasattr(self, 'logs_text') or self.logs_text is None:
+            print(f"LOG (UI not ready): {message}")
+            return
+            
         if message.startswith("[ERROR]") or "ERROR" in message:
             tag = "error"
         elif message.startswith("[SUCCESS]") or "SUCCESS" in message or "✅" in message:
@@ -83,7 +103,7 @@ class MidnightSpooferGUI:
             tag = "warning"
         elif message.startswith("[SYSTEM]") or message.startswith("[STATUS]") or message.startswith("[INFO]"):
             tag = "system"
-        elif message.startswith("[REAL]"):
+        elif message.startswith("[REAL]") or message.startswith("[HARDWARE]"):
             tag = "real"
         else:
             tag = "info"
@@ -123,6 +143,19 @@ class MidnightSpooferGUI:
                                  font=ctk.CTkFont(family="Segoe UI", size=24, weight="bold"),
                                  text_color="#6b21ff")
         logo_label.pack(side="left")
+        
+        # Botão para atualizar hardware info
+        refresh_hw_btn = ctk.CTkButton(
+            logo_frame,
+            text="🔄",
+            command=self.refresh_hardware_info,
+            width=40,
+            height=40,
+            fg_color="#2d1152",
+            hover_color="#4a1c6d",
+            font=ctk.CTkFont(size=16)
+        )
+        refresh_hw_btn.pack(side="right")
         
         nav_buttons = [
             ("📊 Dashboard", self.show_dashboard),
@@ -240,13 +273,14 @@ class MidnightSpooferGUI:
         self.hardware_frame.pack(side="right", fill="both", expand=True)
         self.hardware_frame.pack_propagate(False)
         
-        self.setup_hardware_info()
+        # Create logs area FIRST, then hardware info
         self.setup_logs_area(content_frame)
+        self.setup_hardware_info()
 
     def setup_hardware_info(self):
         title_label = ctk.CTkLabel(
             self.hardware_frame,
-            text="Spoofing Modules",
+            text="Hardware Information (REAL)",
             font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"),
             text_color="#6b21ff"
         )
@@ -261,15 +295,45 @@ class MidnightSpooferGUI:
         left_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
         left_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
         
+        # Obtém dados REAIS do hardware
+        if self.hw_reader:
+            # Don't log here - UI might not be ready yet
+            try:
+                hw_data = self.hw_reader.get_all_hardware_ids()
+            except Exception as e:
+                # Don't log here either
+                hw_data = {
+                    'disk_c': 'N/A',
+                    'disk_d': 'N/A',
+                    'motherboard': 'N/A',
+                    'smbios_uuid': 'N/A',
+                    'chassis': 'N/A',
+                    'bios': 'N/A',
+                    'cpu': 'N/A',
+                    'mac': 'N/A'
+                }
+        else:
+            hw_data = {
+                'disk_c': 'N/A',
+                'disk_d': 'N/A',
+                'motherboard': 'N/A',
+                'smbios_uuid': 'N/A',
+                'chassis': 'N/A',
+                'bios': 'N/A',
+                'cpu': 'N/A',
+                'mac': 'N/A'
+            }
+        
+        # Mapeamento dos dados reais
         hardware_data = [
-            ("Dick C:", "32062287"),
-            ("Dick D:", "E8F5E18"),
-            ("Motherboard:", "ZVP3YO2H0Z5TENV"),
-            ("Smbios UUID:", "ST/C33FA-9FDF-SE39-E3FB-F8EBFE473A26"),
-            ("Chassis:", "6VD1BBR2JG86RB"),
-            ("Bios:", "007EZTK9LTU4HM2"),
-            ("Cpu:", "L945TZUA98WNCLUKYC55P"),
-            ("Mac:", "BA6F5QES88AC")
+            ("Disk C:", hw_data.get('disk_c', 'N/A')),
+            ("Disk D:", hw_data.get('disk_d', 'N/A')),
+            ("Motherboard:", hw_data.get('motherboard', 'N/A')),
+            ("Chassis:", hw_data.get('chassis', 'N/A')),
+            ("Bios:", hw_data.get('bios', 'N/A')),
+            ("Cpu:", hw_data.get('cpu', 'N/A')),
+            ("Mac:", hw_data.get('mac', 'N/A')),
+            ("Smbios UUID:", hw_data.get('smbios_uuid', 'N/A'))
         ]
         
         self.hardware_labels = {}
@@ -281,12 +345,16 @@ class MidnightSpooferGUI:
                                font=ctk.CTkFont(size=11))
             label.pack(side="left")
             
-            value_label = ctk.CTkLabel(frame, text=value, text_color="#ffffff",
+            # Trunca valores muito longos para caber na interface
+            display_value = value
+            
+            value_label = ctk.CTkLabel(frame, text=display_value, text_color="#ffffff",
                                      font=ctk.CTkFont(size=11, weight="bold"))
             value_label.pack(side="left", padx=(5, 0))
             
             self.hardware_labels[label_text] = value_label
         
+        # Lado direito com controles
         right_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
         right_frame.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
         
@@ -309,6 +377,41 @@ class MidnightSpooferGUI:
         self.toggle_switches = {}
         for option in toggle_options:
             self.create_toggle_switch(right_frame, option)
+
+    def refresh_hardware_info(self):
+        """Atualiza as informações de hardware na interface"""
+        if not self.hw_reader:
+            self.add_log_ui("[ERROR] Hardware reader not available")
+            self.show_toast("Hardware reader unavailable", "error")
+            return
+        
+        try:
+            self.add_log_ui("[HARDWARE] Refreshing hardware information...")
+            hw_data = self.hw_reader.get_all_hardware_ids()
+            
+            # Atualiza os labels
+            hardware_mapping = {
+                "Disk C:": hw_data.get('disk_c', 'N/A'),
+                "Disk D:": hw_data.get('disk_d', 'N/A'),
+                "Motherboard:": hw_data.get('motherboard', 'N/A'),
+                "Chassis:": hw_data.get('chassis', 'N/A'),
+                "Bios:": hw_data.get('bios', 'N/A'),
+                "Cpu:": hw_data.get('cpu', 'N/A'),
+                "Mac:": hw_data.get('mac', 'N/A'),
+                "Smbios UUID:": hw_data.get('smbios_uuid', 'N/A')
+            }
+            
+            for key, value in hardware_mapping.items():
+                if key in self.hardware_labels:
+                    display_value = value if len(str(value)) <= 25 else str(value)[:22] + "..."
+                    self.hardware_labels[key].configure(text=display_value)
+            
+            self.add_log_ui("[HARDWARE] Hardware info refreshed successfully")
+            self.show_toast("Hardware info updated", "success")
+            
+        except Exception as e:
+            self.add_log_ui(f"[ERROR] Failed to refresh hardware: {str(e)}")
+            self.show_toast("Hardware refresh failed", "error")
 
     def create_toggle_switch(self, parent, option):
         switch_frame = ctk.CTkFrame(parent, fg_color="transparent")
@@ -512,10 +615,29 @@ class MidnightSpooferGUI:
             self.add_log_ui("[REAL] This will actually modify system files")
             self.add_log_ui("=" * 60)
             
+            # Mostra valores ANTES do spoof
+            if self.hw_reader:
+                self.add_log_ui("[HARDWARE] Current Hardware IDs (BEFORE):")
+                try:
+                    hw_before = self.hw_reader.get_all_hardware_ids()
+                    for key, value in hw_before.items():
+                        display_value = value if len(str(value)) <= 40 else str(value)[:37] + "..."
+                        self.add_log_ui(f"[HARDWARE]   {key}: {display_value}")
+                except Exception as e:
+                    self.add_log_ui(f"[WARNING] Could not read hardware before spoof: {str(e)}")
+            
             success = self.cleaner.execute_real_spoofing()
             
             if success:
                 self.last_spoof_time = datetime.now()
+                
+                # Atualiza display após spoof
+                if self.hw_reader:
+                    self.add_log_ui("[HARDWARE] Refreshing hardware display...")
+                    try:
+                        self.refresh_hardware_info()
+                    except Exception as e:
+                        self.add_log_ui(f"[WARNING] Could not refresh hardware display: {str(e)}")
                 
                 self.circular_progress.set_progress(100)
                 self.update_status("REAL spoofing completed!", is_success=True)
@@ -551,8 +673,10 @@ class MidnightSpooferGUI:
             with open(filename, 'w', encoding='utf-8') as f:
                 f.write(self.logs_text.get("1.0", "end"))
             self.show_toast(f"Logs exported to {filename}", "success")
+            self.add_log_ui(f"[SYSTEM] Logs exported to {filename}")
         except Exception as e:
             self.show_toast(f"Export failed: {str(e)}", "error")
+            self.add_log_ui(f"[ERROR] Export failed: {str(e)}")
 
     def show_dashboard(self):
         self.show_toast("Dashboard loaded", "info")
@@ -571,12 +695,17 @@ class MidnightSpooferGUI:
         about_text = """
         Midnight Spoofer v2.0
         Advanced system identity protection
+        
         • Real Discord RPC spoofing
         • FiveM cache cleaning
         • Network configuration reset
         • Registry sanitization
+        • Real hardware ID detection
+        
         ⚠️ Always run as Administrator
         for full functionality.
+        
+        📌 Educational purposes only
         """   
         messagebox.showinfo("About Midnight Spoofer", about_text)
 
