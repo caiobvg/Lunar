@@ -19,7 +19,7 @@ Advanced system identity protection and cleaning utility for FiveM and gaming en
 
 ## Installation
 
-Clone the repository
-```bash
 git clone https://github.com/caiobvg/MidnightSpoofer.git
 cd MidnightSpoofer
+pip install -r requirements.txt
+python main.py
