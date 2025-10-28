@@ -8,7 +8,7 @@ import os
 # Add src to path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
-from src.gui.main_window import MidnightSpooferGUI
+from src.dashboard.dashboard import MidnightSpooferGUI
 
 def check_admin_privileges():
     """Check if running as administrator"""

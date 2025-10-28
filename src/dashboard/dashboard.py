@@ -1,3 +1,5 @@
+# src/dashboard/dashboard.py
+
 import customtkinter as ctk
 import threading
 import time
@@ -432,6 +434,13 @@ class MidnightSpooferGUI:
         for option in toggle_options:
             self.create_toggle_switch(controls_content, option)
 
+        # Dry-run global toggle for registry changes
+        self.dry_run_var = ctk.BooleanVar(value=False)
+        dry_frame = ctk.CTkFrame(controls_content, fg_color="transparent")
+        dry_frame.pack(fill="x", pady=(10, 0))
+        dry_chk = ctk.CTkCheckBox(dry_frame, text="Dry-run (do not apply registry changes)", variable=self.dry_run_var)
+        dry_chk.pack(anchor="w")
+
     def refresh_hardware_info(self):
         """Atualiza as informações de hardware na interface"""
         if not self.hw_reader:
@@ -741,7 +750,45 @@ class MidnightSpooferGUI:
         if not confirm:
             logger.log_warning("Spoofing cancelled by user", "USER")
             return
-            
+        # If NEW MAC is enabled and a selection exists, show a small preview modal
+        if self.toggle_states.get("NEW MAC") and self.selected_interface:
+            preview = ctk.CTkToplevel(self.root)
+            preview.title("Preview MAC Spoofing")
+            preview.geometry("420x220")
+            preview.transient(self.root)
+            preview.grab_set()
+
+            # Determine preview MAC
+            if self.selected_vendor:
+                new_mac = self.mac_spoofer._generate_vendor_mac(self.selected_vendor)
+            else:
+                new_mac = self.mac_spoofer._generate_random_mac()
+
+            lbl = ctk.CTkLabel(preview, text=f"Interface: {self.selected_interface}", anchor="w")
+            lbl.pack(fill="x", padx=12, pady=(12,4))
+
+            lbl2 = ctk.CTkLabel(preview, text=f"Vendor: {self.selected_vendor or 'Random'}", anchor="w")
+            lbl2.pack(fill="x", padx=12, pady=4)
+
+            lbl3 = ctk.CTkLabel(preview, text=f"New MAC (preview): {new_mac}", anchor="w")
+            lbl3.pack(fill="x", padx=12, pady=4)
+
+            info = ctk.CTkLabel(preview, text=f"Dry-run: {self.dry_run_var.get()}", anchor="w")
+            info.pack(fill="x", padx=12, pady=8)
+
+            btn_frame = ctk.CTkFrame(preview)
+            btn_frame.pack(fill="x", padx=12, pady=12)
+
+            cancel = ctk.CTkButton(btn_frame, text="Cancel", command=lambda: preview.destroy())
+            cancel.pack(side="left", expand=True, padx=6)
+
+            proceed = ctk.CTkButton(btn_frame, text="Proceed", command=lambda: (preview.destroy(), self.start_spoofing()))
+            proceed.pack(side="left", expand=True, padx=6)
+
+            preview.wait_window()
+            # If preview closed via cancel, do not continue (start_spoofing called only by proceed)
+            return
+
         self.start_spoofing()
 
     def start_spoofing(self):
