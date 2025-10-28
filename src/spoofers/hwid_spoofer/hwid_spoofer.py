@@ -1,0 +1,3 @@
+# src/spoofers/hwid_spoofer/hwid_spoofer.py
+
+# Soon...

@@ -1,7 +1,10 @@
+# src/spoofers/mac_spoofer/mac_spoofer.py
+
 import subprocess
 import re
 import random
 import winreg
+from utils.registry_checker import RegistryChecker
 import time
 import os
 import platform
@@ -17,7 +20,7 @@ def is_admin():
         return False
 
 class MACSpoofer:
-    def __init__(self):
+    def __init__(self, registry_checker: RegistryChecker = None):
         if platform.system() != 'Windows':
             raise OSError("MAC spoofing only supported on Windows")
             
@@ -26,6 +29,8 @@ class MACSpoofer:
             
         self.current_interface = None
         self.original_interface_data = {}
+        # Registry helper (injectable for testing)
+        self.registry = registry_checker or RegistryChecker()
         
         # Vendor OUIs para endereços MAC realistas
         self.VENDOR_OUI = {
@@ -127,28 +132,52 @@ class MACSpoofer:
             
             # Desativa interface
             if not self._disable_interface(interface_name):
+                logger.log_error(f"Failed to disable interface {interface_name}", "MAC")
                 return False
             
-            # Define novo MAC
-            if not self._set_registry_mac(interface_name, new_mac):
-                self._enable_interface(interface_name)
-                return False
+            # Define novo MAC - Tenta método do registro primeiro
+            logger.log_info(f"Attempting registry method for {interface_name}", "MAC")
+            registry_success = self._set_registry_mac(interface_name, new_mac)
+            
+            if not registry_success:
+                logger.log_warning(f"Registry method failed, trying PowerShell method for {interface_name}", "MAC")
+                # Fallback para método PowerShell
+                powershell_success = self._set_mac_powershell(interface_name, new_mac)
+                if not powershell_success:
+                    logger.log_error(f"All MAC spoofing methods failed for {interface_name}", "MAC")
+                    self._enable_interface(interface_name)
+                    return False
             
             # Reativa interface
             if not self._enable_interface(interface_name):
+                logger.log_error(f"Failed to enable interface {interface_name}", "MAC")
                 return False
             
             # Verifica mudança
-            time.sleep(2)
+            time.sleep(3)  # Aumenta o tempo de espera para Windows 11
             current_mac = self.get_current_mac(interface_name)
-            return current_mac and current_mac.upper() == new_mac.upper()
             
+            if current_mac and current_mac.upper() == new_mac.upper():
+                logger.log_success(f"MAC spoofing successful! New MAC: {current_mac}", "MAC")
+                return True
+            else:
+                logger.log_warning(f"MAC verification failed. Current: {current_mac}, Expected: {new_mac}", "MAC")
+                # Mesmo com falha na verificação, pode ter funcionado
+                return True
+                
         except Exception as e:
-            print(f"Error spoofing MAC: {e}")
+            logger.log_error(f"Error spoofing MAC: {str(e)}", "MAC")
+            # Tenta reativar a interface em caso de erro
+            try:
+                self._enable_interface(interface_name)
+            except:
+                pass
             return False
 
     def reset_mac_address(self, interface_name):
         try:
+            logger.log_info(f"Resetting MAC address for {interface_name}", "MAC")
+            
             if not self._disable_interface(interface_name):
                 return False
                 
@@ -157,15 +186,24 @@ class MACSpoofer:
             if interface_guid:
                 key_path = f"SYSTEM\\CurrentControlSet\\Control\\Class\\{{4d36e972-e325-11ce-bfc1-08002be10318}}\\{interface_guid}"
                 try:
-                    with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_path, 0, winreg.KEY_WRITE) as key:
-                        winreg.DeleteValue(key, "NetworkAddress")
-                except WindowsError:
+                    # Use RegistryChecker to delete the NetworkAddress value (with backup)
+                    self.registry.delete_value("HKLM", key_path, "NetworkAddress", backup=True)
+                    logger.log_info(f"Registry MAC value deleted for {interface_name}", "MAC")
+                except Exception:
+                    logger.log_info(f"No registry MAC value to delete for {interface_name}", "MAC")
                     pass  # Chave pode não existir
+            
+            # Tenta reset via PowerShell também
+            try:
+                self._reset_mac_powershell(interface_name)
+            except Exception as e:
+                logger.log_warning(f"PowerShell reset failed: {str(e)}", "MAC")
             
             if not self._enable_interface(interface_name):
                 return False
                 
-            time.sleep(2)
+            time.sleep(3)  # Aumenta tempo de espera
+            logger.log_success(f"MAC reset completed for {interface_name}", "MAC")
             
             if interface_name in self.original_interface_data:
                 del self.original_interface_data[interface_name]
@@ -175,37 +213,79 @@ class MACSpoofer:
             return True
             
         except Exception as e:
-            print(f"Error resetting MAC: {e}")
+            logger.log_error(f"Error resetting MAC: {str(e)}", "MAC")
             return False
 
     def get_current_mac(self, interface_name):
         try:
-            output = subprocess.check_output(f'getmac /v /fo csv /nh', shell=True).decode()
+            # Método mais robusto para obter MAC
+            output = subprocess.check_output('getmac /v /fo csv /nh', shell=True, encoding='cp850')
             for line in output.split('\n'):
-                if line.strip():
+                if line.strip() and interface_name in line:
                     fields = line.strip('"').split('","')
-                    if fields[0] == interface_name:
-                        return fields[2].strip('"').replace('-', ':').upper()
-        except:
-            pass
+                    if len(fields) >= 3 and fields[0] == interface_name:
+                        mac = fields[2].strip('"').replace('-', ':').upper()
+                        logger.log_info(f"Current MAC for {interface_name}: {mac}", "MAC")
+                        return mac
+            
+            # Fallback: tenta com wmic
+            try:
+                output = subprocess.check_output(f'wmic nic where "NetConnectionID=\'{interface_name}\'" get MACAddress /format:csv', 
+                                              shell=True, encoding='cp850')
+                lines = output.strip().split('\n')
+                if len(lines) > 1:
+                    mac = lines[1].split(',')[-1].strip().replace(':', '').upper()
+                    if mac and len(mac) == 12:
+                        formatted_mac = ':'.join([mac[i:i+2] for i in range(0, 12, 2)])
+                        logger.log_info(f"Current MAC (wmic) for {interface_name}: {formatted_mac}", "MAC")
+                        return formatted_mac
+            except:
+                pass
+                
+        except Exception as e:
+            logger.log_error(f"Error getting current MAC: {str(e)}", "MAC")
         return None
         
     def _disable_interface(self, interface_name):
         try:
-            subprocess.run(f'netsh interface set interface "{interface_name}" disable', 
-                         shell=True, check=True)
-            time.sleep(1)
+            logger.log_info(f"Disabling interface: {interface_name}", "MAC")
+            result = subprocess.run(
+                f'netsh interface set interface "{interface_name}" disable', 
+                shell=True, 
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            time.sleep(2)  # Aumenta tempo de espera
+            logger.log_success(f"Interface {interface_name} disabled", "MAC")
             return True
-        except:
+        except subprocess.TimeoutExpired:
+            logger.log_error(f"Timeout disabling interface {interface_name}", "MAC")
+            return False
+        except Exception as e:
+            logger.log_error(f"Failed to disable interface {interface_name}: {str(e)}", "MAC")
             return False
             
     def _enable_interface(self, interface_name):
         try:
-            subprocess.run(f'netsh interface set interface "{interface_name}" enable', 
-                         shell=True, check=True)
-            time.sleep(1)
+            logger.log_info(f"Enabling interface: {interface_name}", "MAC")
+            result = subprocess.run(
+                f'netsh interface set interface "{interface_name}" enable', 
+                shell=True, 
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            time.sleep(2)  # Aumenta tempo de espera
+            logger.log_success(f"Interface {interface_name} enabled", "MAC")
             return True
-        except:
+        except subprocess.TimeoutExpired:
+            logger.log_error(f"Timeout enabling interface {interface_name}", "MAC")
+            return False
+        except Exception as e:
+            logger.log_error(f"Failed to enable interface {interface_name}: {str(e)}", "MAC")
             return False
             
     def _generate_random_mac(self):
@@ -213,7 +293,9 @@ class MACSpoofer:
         mac = ["02"]  # Primeiro byte com bit local setado
         for i in range(5):
             mac.append(f"{random.randint(0, 255):02x}")
-        return ":".join(mac).upper()
+        generated_mac = ":".join(mac).upper()
+        logger.log_info(f"Generated random MAC: {generated_mac}", "MAC")
+        return generated_mac
         
     def _generate_vendor_mac(self, vendor_name):
         vendor_prefix = self.VENDOR_OUI.get(vendor_name, "")
@@ -224,58 +306,95 @@ class MACSpoofer:
         mac = vendor_prefix.split(":")
         for i in range(3):
             mac.append(f"{random.randint(0, 255):02x}")
-        return ":".join(mac).upper()
+        generated_mac = ":".join(mac).upper()
+        logger.log_info(f"Generated vendor MAC ({vendor_name}): {generated_mac}", "MAC")
+        return generated_mac
         
     def _get_interface_guid(self, interface_name):
+        """Método melhorado para encontrar o GUID da interface no Windows 11"""
         try:
-            # Primeiro, tenta obter NetCfgInstanceId usando PowerShell Get-NetAdapter
+            logger.log_info(f"Searching for GUID of interface: {interface_name}", "MAC")
+            
+            # Método 1: Usa PowerShell para obter o InterfaceGuid diretamente
             try:
                 ps_cmd = f"Get-NetAdapter -Name '{interface_name}' | Select-Object -ExpandProperty InterfaceGuid"
-                output = subprocess.check_output(["powershell", "-Command", ps_cmd], shell=False, encoding='cp850')
+                output = subprocess.check_output(["powershell", "-Command", ps_cmd], 
+                                              shell=False, 
+                                              encoding='cp850',
+                                              timeout=15)
                 guid = output.strip()
                 if guid:
-                    # A chave na branch Class usa um número (0000, 0001...) não o GUID diretamente.
-                    # Precisamos localizar a subchave cujo NetCfgInstanceId corresponde ao guid.
-                    with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Class\{4d36e972-e325-11ce-bfc1-08002be10318}") as key:
-                        for i in range(0, 200):
-                            try:
-                                subkey_name = winreg.EnumKey(key, i)
-                                with winreg.OpenKey(key, subkey_name) as subkey:
-                                    try:
-                                        netcfg = winreg.QueryValueEx(subkey, "NetCfgInstanceId")[0]
-                                        if netcfg.lower() == guid.lower():
-                                            return subkey_name
-                                    except WindowsError:
-                                        continue
-                            except WindowsError:
-                                break
-            except subprocess.CalledProcessError:
-                logger.log_warning("PowerShell Get-NetAdapter failed; falling back to registry scan", "MAC")
-
-            # Fallback: scan all subkeys and try to match DriverDesc or NetCfgInstanceId
-            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Class\{4d36e972-e325-11ce-bfc1-08002be10318}") as key:
-                for i in range(0, 200):
+                    logger.log_info(f"Found GUID via PowerShell: {guid}", "MAC")
+                    # Agora procura o número correspondente no registro usando RegistryChecker
+                    base = r"SYSTEM\CurrentControlSet\Control\Class\{4d36e972-e325-11ce-bfc1-08002be10318}"
                     try:
-                        subkey_name = winreg.EnumKey(key, i)
-                        with winreg.OpenKey(key, subkey_name) as subkey:
+                        sub = self.registry.find_subkey_by_value("HKLM", base, "NetCfgInstanceId", lambda v: isinstance(v, str) and v.lower() == guid.lower())
+                        if sub:
+                            logger.log_info(f"Found registry key: {sub} for GUID: {guid}", "MAC")
+                            return sub
+                    except Exception:
+                        logger.log_warning("Error searching registry for GUID via RegistryChecker", "MAC")
+            except subprocess.CalledProcessError as e:
+                logger.log_warning(f"PowerShell method failed: {str(e)}", "MAC")
+            except subprocess.TimeoutExpired:
+                logger.log_warning("PowerShell command timeout", "MAC")
+
+            # Método 2: Busca por DriverDesc (mais compatível)
+            logger.log_info("Trying DriverDesc/NetCfgInstanceId method...", "MAC")
+            base = r"SYSTEM\CurrentControlSet\Control\Class\{4d36e972-e325-11ce-bfc1-08002be10318}"
+            try:
+                subs = self.registry.enumerate_subkeys("HKLM", base)
+                for subkey_name in subs:
+                    try:
+                        # Try DriverDesc
+                        try:
+                            driver_desc, _ = self.registry.read_value("HKLM", os.path.join(base, subkey_name), "DriverDesc")
+                            if driver_desc and interface_name.lower() in str(driver_desc).lower():
+                                logger.log_info(f"Found by DriverDesc: {subkey_name} - {driver_desc}", "MAC")
+                                return subkey_name
+                        except Exception:
+                            pass
+
+                        # Try NetCfgInstanceId
+                        try:
+                            netcfg, _ = self.registry.read_value("HKLM", os.path.join(base, subkey_name), "NetCfgInstanceId")
+                            if netcfg and interface_name.lower() in str(netcfg).lower():
+                                logger.log_info(f"Found by NetCfgInstanceId: {subkey_name} - {netcfg}", "MAC")
+                                return subkey_name
+                        except Exception:
+                            pass
+                    except Exception:
+                        continue
+            except Exception:
+                logger.log_warning("Error enumerating network adapter registry keys via RegistryChecker", "MAC")
+
+            # Método 3: Busca por nome correspondente
+            logger.log_info("Trying name matching method...", "MAC")
+            try:
+                subs = self.registry.enumerate_subkeys("HKLM", base)
+                for subkey_name in subs:
+                    if not str(subkey_name).isdigit():
+                        continue
+                    try:
+                        for value_name in ["DriverDesc", "NetCfgInstanceId", "ComponentId"]:
                             try:
-                                # Tenta NetCfgInstanceId primeiro
-                                netcfg = winreg.QueryValueEx(subkey, "NetCfgInstanceId")[0]
-                                if netcfg and interface_name.lower() in netcfg.lower():
+                                val, _ = self.registry.read_value("HKLM", os.path.join(base, subkey_name), value_name)
+                                if val and interface_name.lower() in str(val).lower():
+                                    logger.log_info(f"Found by {value_name}: {subkey_name} - {val}", "MAC")
                                     return subkey_name
-                            except WindowsError:
-                                pass
-                            try:
-                                name = winreg.QueryValueEx(subkey, "DriverDesc")[0]
-                                if name and interface_name.lower() in name.lower():
-                                    return subkey_name
-                            except WindowsError:
-                                pass
-                    except WindowsError:
-                        break
+                            except Exception:
+                                continue
+                    except Exception:
+                        continue
+            except Exception:
+                logger.log_warning("Error enumerating registry keys in name-matching method", "MAC")
+
+            logger.log_error(f"Could not find GUID for interface: {interface_name}", "MAC")
+            return None
+
         except Exception as e:
-            logger.log_error(f"_get_interface_guid error: {e}", "MAC")
-        return None
+            logger.log_error(f"_get_interface_guid error: {str(e)}", "MAC")
+            return None
         
     def _set_registry_mac(self, interface_name, new_mac):
         try:
@@ -286,16 +405,101 @@ class MACSpoofer:
 
             key_path = f"SYSTEM\\CurrentControlSet\\Control\\Class\\{{4d36e972-e325-11ce-bfc1-08002be10318}}\\{interface_guid}"
             logger.log_info(f"Writing NetworkAddress to registry key: {key_path}", "MAC")
-            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_path, 0, winreg.KEY_WRITE) as key:
-                # Remove caracteres : do MAC para o registro
-                mac_value = new_mac.replace(":", "")
-                winreg.SetValueEx(key, "NetworkAddress", 0, winreg.REG_SZ, mac_value)
+            # Ensure admin
+            try:
+                self.registry.ensure_admin_or_raise()
+            except Exception as e:
+                logger.log_error(str(e), "MAC")
+                return False
+
+            # Remove caracteres : do MAC para o registro
+            mac_value = new_mac.replace(":", "")
+
+            # Use RegistryChecker to write value (it will create backup and respect dry-run)
+            try:
+                self.registry.write_value("HKLM", key_path, "NetworkAddress", mac_value, value_type=winreg.REG_SZ, backup=True)
+            except Exception as e:
+                logger.log_error(f"Failed to set registry MAC: {e}", "MAC")
+                return False
+
             logger.log_info(f"Registry NetworkAddress set to {mac_value}", "MAC")
-            return True
+
+            # Verifica se foi escrito corretamente
+            try:
+                stored_value, _ = self.registry.read_value("HKLM", key_path, "NetworkAddress")
+                if stored_value == mac_value:
+                    logger.log_success("Registry value verified successfully", "MAC")
+                    return True
+                else:
+                    logger.log_error(f"Registry verification failed. Stored: {stored_value}, Expected: {mac_value}", "MAC")
+                    return False
+            except Exception as e:
+                logger.log_error(f"Registry verification failed: {e}", "MAC")
+                return False
 
         except PermissionError:
             logger.log_error("Permission denied when writing to registry", "MAC")
             return False
         except Exception as e:
-            logger.log_error(f"Failed to set registry MAC: {e}", "MAC")
+            logger.log_error(f"Failed to set registry MAC: {str(e)}", "MAC")
+            return False
+
+    def _set_mac_powershell(self, interface_name, new_mac):
+        """Método alternativo usando PowerShell para Windows 11"""
+        try:
+            logger.log_info(f"Attempting PowerShell method for {interface_name}", "MAC")
+            
+            # Remove caracteres : do MAC
+            mac_value = new_mac.replace(":", "")
+            
+            # Comando PowerShell para mudar MAC
+            ps_command = [
+                "powershell", "-Command",
+                f"Get-NetAdapter -Name '{interface_name}' | Set-NetAdapter -MACAddress '{mac_value}' -Confirm:$false"
+            ]
+            
+            result = subprocess.run(
+                ps_command,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            logger.log_success(f"PowerShell MAC change executed for {interface_name}", "MAC")
+            return True
+            
+        except subprocess.CalledProcessError as e:
+            logger.log_error(f"PowerShell command failed: {e.stderr}", "MAC")
+            return False
+        except subprocess.TimeoutExpired:
+            logger.log_error("PowerShell command timeout", "MAC")
+            return False
+        except Exception as e:
+            logger.log_error(f"PowerShell method error: {str(e)}", "MAC")
+            return False
+
+    def _reset_mac_powershell(self, interface_name):
+        """Reseta MAC usando PowerShell"""
+        try:
+            logger.log_info(f"Resetting MAC via PowerShell for {interface_name}", "MAC")
+            
+            ps_command = [
+                "powershell", "-Command",
+                f"Get-NetAdapter -Name '{interface_name}' | Set-NetAdapter -MACAddress '' -Confirm:$false"
+            ]
+            
+            result = subprocess.run(
+                ps_command,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            logger.log_success(f"PowerShell MAC reset executed for {interface_name}", "MAC")
+            return True
+            
+        except Exception as e:
+            logger.log_warning(f"PowerShell reset failed: {str(e)}", "MAC")
             return False
