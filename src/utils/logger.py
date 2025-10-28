@@ -1,88 +1,134 @@
 # src/utils/logger.py
 
 import logging
+import logging.handlers
+import threading
 import sys
+import os
 from datetime import datetime
 from typing import Callable, List
 
+
 class CustomLogger:
-    def __init__(self):
+    def __init__(self, log_file: str = None):
         self.subscribers: List[Callable[[str], None]] = []
-        
-        # Mapa de cores para diferentes contextos
-        self.context_colors = {
-            "SYSTEM": "#6b21ff",
-            "SECURITY": "#00ff88", 
-            "HARDWARE": "#ffaa00",
-            "MAC": "#b0b0ff",  # ← ADICIONADO: Cor para logs MAC
-            "ERROR": "#ff4444",
-            "SUCCESS": "#00ff88",
-            "WARNING": "#ffaa00",
-            "INFO": "#e0e0ff",
-            "CONTROL": "#6b21ff",
-            "SPOOFING": "#ff55ff",
-            "NETWORK": "#55aaff",
-            "REGISTRY": "#ffaa55",
-            "USER": "#aa55ff",
-            "NAVIGATION": "#55ffaa",
-            "CRITICAL": "#ff4444"
-        }
+        self._lock = threading.RLock()
+
+        # Setup python logging
+        self.logger = logging.getLogger("MidnightSpoofer")
+        self.logger.setLevel(logging.DEBUG)
+
+        # Formatter: [HH:MM:SS] [LEVEL] [CONTEXT] Message
+        fmt = logging.Formatter("[%(asctime)s] [%(levelname)s] [%(context)s] %(message)s", datefmt="%H:%M:%S")
+
+        # Console handler
+        ch = logging.StreamHandler(sys.stdout)
+        ch.setLevel(logging.DEBUG)
+        ch.setFormatter(fmt)
+        self.logger.addHandler(ch)
+
+        # File handler (rotating) if requested
+        if log_file is None:
+            log_file = os.path.abspath(os.path.join(os.getcwd(), "midnight_log.txt"))
+        fh = logging.handlers.RotatingFileHandler(log_file, maxBytes=5 * 1024 * 1024, backupCount=3, encoding='utf-8')
+        fh.setLevel(logging.DEBUG)
+        fh.setFormatter(fmt)
+        self.logger.addHandler(fh)
 
     def add_subscriber(self, callback: Callable[[str], None]):
-        """Add a subscriber to receive log messages"""
-        if callback not in self.subscribers:
-            self.subscribers.append(callback)
+        """Register a GUI callback to receive formatted log strings."""
+        with self._lock:
+            if callback not in self.subscribers:
+                self.subscribers.append(callback)
 
     def remove_subscriber(self, callback: Callable[[str], None]):
-        """Remove a subscriber"""
-        if callback in self.subscribers:
-            self.subscribers.remove(callback)
+        with self._lock:
+            if callback in self.subscribers:
+                self.subscribers.remove(callback)
 
-    def _notify_subscribers(self, message: str):
-        """Notify all subscribers with the log message"""
-        for subscriber in self.subscribers:
-            try:
-                subscriber(message)
-            except Exception as e:
-                # Prevent logging errors from breaking the application
-                print(f"Subscriber error: {e}")
+    def _notify_subscribers(self, record: logging.LogRecord):
+        msg = self._format_record(record)
+        with self._lock:
+            for subscriber in list(self.subscribers):
+                try:
+                    subscriber(msg)
+                except Exception:
+                    # Subscribers must not break logging
+                    pass
 
-    def _format_message(self, message: str, level: str, context: str) -> str:
-        """Format log message with timestamp and context"""
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        
-        # Get color for context or use default
-        color_code = self.context_colors.get(context, "#e0e0ff")
-        
-        # Format: [TIME] [LEVEL] [CONTEXT] Message
-        formatted = f"[{timestamp}] [{level}] [{context}] {message}"
-        return formatted
+    def _format_record(self, record: logging.LogRecord) -> str:
+        ctx = getattr(record, 'context', 'SYSTEM')
+        timestamp = datetime.fromtimestamp(record.created).strftime("%H:%M:%S")
+        return f"[{timestamp}] [{record.levelname}] [{ctx}] {record.getMessage()}"
 
+    def _log(self, level: int, message: str, context: str = "SYSTEM"):
+        extra = {'context': context}
+        # Use the underlying logger to handle handlers
+        self.logger.log(level, message, extra=extra)
+        # Also notify subscribers with formatted message
+        record = logging.LogRecord(name=self.logger.name, level=level, pathname=__file__, lineno=0, msg=message, args=(), exc_info=None)
+        setattr(record, 'context', context)
+        self._notify_subscribers(record)
+
+    # Public convenience methods
+    def debug(self, message: str, context: str = "SYSTEM"):
+        self._log(logging.DEBUG, message, context)
+
+    def info(self, message: str, context: str = "SYSTEM"):
+        self._log(logging.INFO, message, context)
+
+    def success(self, message: str, context: str = "SYSTEM"):
+        # No native success level — use INFO with SUCCESS context
+        self._log(logging.INFO, message, context)
+
+    def warning(self, message: str, context: str = "WARNING"):
+        self._log(logging.WARNING, message, context)
+
+    def error(self, message: str, context: str = "ERROR"):
+        self._log(logging.ERROR, message, context)
+
+    def exception(self, message: str, context: str = "ERROR"):
+        # Log exception with stack trace
+        self.logger.exception(message, extra={'context': context})
+        # Notify subscribers as well
+        record = logging.LogRecord(name=self.logger.name, level=logging.ERROR, pathname=__file__, lineno=0, msg=message, args=(), exc_info=None)
+        setattr(record, 'context', context)
+        self._notify_subscribers(record)
+
+    # Backwards-compatible wrappers for previous API
     def log(self, message: str, level: str = "INFO", context: str = "SYSTEM"):
-        """Main logging method"""
-        formatted_message = self._format_message(message, level, context)
-        
-        # Print to console
-        print(formatted_message)
-        
-        # Notify subscribers (like GUI)
-        self._notify_subscribers(formatted_message)
+        """Compatibility wrapper: log(message, level, context)"""
+        lvl = (level or "INFO").upper()
+        if lvl == "DEBUG":
+            self.debug(message, context)
+        elif lvl in ("INFO",):
+            self.info(message, context)
+        elif lvl in ("SUCCESS",):
+            self.success(message, context)
+        elif lvl in ("WARNING", "WARN"):
+            self.warning(message, context)
+        elif lvl in ("ERROR",):
+            self.error(message, context)
+        elif lvl in ("CRITICAL",):
+            self.error(message, context)
+        else:
+            self.info(message, context)
 
-    # Convenience methods
     def log_info(self, message: str, context: str = "SYSTEM"):
-        self.log(message, "INFO", context)
+        self.info(message, context)
 
     def log_success(self, message: str, context: str = "SUCCESS"):
-        self.log(message, "SUCCESS", context)
+        self.success(message, context)
 
     def log_warning(self, message: str, context: str = "WARNING"):
-        self.log(message, "WARNING", context)
+        self.warning(message, context)
 
     def log_error(self, message: str, context: str = "ERROR"):
-        self.log(message, "ERROR", context)
+        self.error(message, context)
 
     def log_critical(self, message: str, context: str = "CRITICAL"):
-        self.log(message, "CRITICAL", context)
+        self.error(message, context)
+
 
 # Global logger instance
 logger = CustomLogger()
