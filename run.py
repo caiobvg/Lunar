@@ -21,13 +21,12 @@ def check_admin_privileges():
 def main():
     # Check administrator privileges
     if not check_admin_privileges():
-        response = messagebox.askyesno(
-            "Administrator Rights Required", 
-            "❌ Midnight Spoofer requires Administrator privileges!\n\n"
-            "REAL spoofing features may not work without admin rights.\n\n"
-            "Do you want to continue anyway?",
-            icon='warning'
-        )
+        messagebox.showerror("Administrator Rights Required", 
+                         "❌ Midnight Spoofer requires Administrator privileges!\n\n" +
+                         "Please run as Administrator to use all features.\n\n" +
+                         "Right-click -> Run as administrator")
+        return
+    
         if not response:
             return
     

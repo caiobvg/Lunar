@@ -1,5 +1,3 @@
-# src/gui/main_window.py
-
 import customtkinter as ctk
 import threading
 import time
@@ -13,6 +11,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from cleaners.system_cleaner import SystemCleaner
 from utils.hardware_reader import HardwareReader
 from utils.logger import logger
+from spoofers.mac_spoofer.mac_spoofer import MACSpoofer
+from spoofers.mac_spoofer.select_network import InterfaceSelectionDialog
 from .components.particles import ParticleSystem
 from .components.buttons import AnimatedButton
 from .components.progress import CircularProgress
@@ -34,6 +34,14 @@ class MidnightSpooferGUI:
         self.log_queue = queue.Queue()
         self.cleaner = SystemCleaner()
         
+        # Initialize MAC spoofer
+        try:
+            self.mac_spoofer = MACSpoofer()
+            logger.log_info("MAC spoofer initialized successfully", "MAC")
+        except Exception as e:
+            logger.log_error(f"Failed to initialize MAC spoofer: {e}", "MAC")
+            self.mac_spoofer = None
+            
         # Register GUI as logger subscriber
         logger.add_subscriber(self.add_log_ui)
         
@@ -66,6 +74,7 @@ class MidnightSpooferGUI:
         logger.log_info("Spoofing engine loaded", "SECURITY")
         logger.log_success("Discord/FiveM spoofing ready", "READY")
         logger.log_warning("Run as Administrator for full functionality", "INFO")
+        logger.log_info("MAC Spoofer module loaded", "MAC")
         
         # Move hardware initialization logs to after UI is fully set up
         if self.hw_reader:
@@ -115,6 +124,8 @@ class MidnightSpooferGUI:
             tag = "system"
         elif "[HARDWARE]" in message or "[SECURITY]" in message:
             tag = "hardware"
+        elif "[MAC]" in message:  # ← ADICIONADO: Tag específica para logs MAC
+            tag = "mac"
         else:
             tag = "info"
         
@@ -321,31 +332,7 @@ class MidnightSpooferGUI:
         spoofing_content.pack(fill="both", expand=True, padx=20, pady=(0, 20))
         
         # Obtém dados do hardware
-        if self.hw_reader:
-            try:
-                hw_data = self.hw_reader.get_all_hardware_ids()
-            except Exception as e:
-                hw_data = {
-                    'disk_c': 'N/A',
-                    'disk_d': 'N/A',
-                    'motherboard': 'N/A',
-                    'smbios_uuid': 'N/A',
-                    'chassis': 'N/A',
-                    'bios': 'N/A',
-                    'cpu': 'N/A',
-                    'mac': 'N/A'
-                }
-        else:
-            hw_data = {
-                'disk_c': 'N/A',
-                'disk_d': 'N/A',
-                'motherboard': 'N/A',
-                'smbios_uuid': 'N/A',
-                'chassis': 'N/A',
-                'bios': 'N/A',
-                'cpu': 'N/A',
-                'mac': 'N/A'
-            }
+        hw_data = self.get_current_hardware_data()
         
         # Mapeamento dos dados de hardware
         hardware_data = [
@@ -376,6 +363,34 @@ class MidnightSpooferGUI:
             value_label.pack(side="left", padx=(5, 0))
             
             self.hardware_labels[label_text] = value_label
+
+    def get_current_hardware_data(self):
+        """Obtém dados de hardware, considerando MAC spoofado se aplicável"""
+        if not self.hw_reader:
+            return {
+                'disk_c': 'N/A', 'disk_d': 'N/A', 'motherboard': 'N/A',
+                'smbios_uuid': 'N/A', 'chassis': 'N/A', 'bios': 'N/A',
+                'cpu': 'N/A', 'mac': 'N/A'
+            }
+        
+        try:
+            hw_data = self.hw_reader.get_all_hardware_ids()
+            
+            # Se há MAC spoofado ativo, substitui o MAC real
+            if (self.mac_spoofer.current_interface and 
+                self.mac_spoofer.current_interface in self.mac_spoofer.original_interface_data):
+                current_mac = self.mac_spoofer.get_current_mac(self.mac_spoofer.current_interface)
+                if current_mac:
+                    hw_data['mac'] = f"{current_mac} 🎭"
+            
+            return hw_data
+        except Exception as e:
+            logger.log_error(f"Error getting hardware data: {e}", "HARDWARE")
+            return {
+                'disk_c': 'N/A', 'disk_d': 'N/A', 'motherboard': 'N/A',
+                'smbios_uuid': 'N/A', 'chassis': 'N/A', 'bios': 'N/A',
+                'cpu': 'N/A', 'mac': 'N/A'
+            }
 
     def setup_controls(self):
         """Configura a seção direita - Controls"""
@@ -423,7 +438,7 @@ class MidnightSpooferGUI:
         
         try:
             logger.log_info("Refreshing hardware information...", "HARDWARE")
-            hw_data = self.hw_reader.get_all_hardware_ids()
+            hw_data = self.get_current_hardware_data()
             
             # Atualiza os labels
             hardware_mapping = {
@@ -489,8 +504,108 @@ class MidnightSpooferGUI:
         
         if new_state:
             self.show_toast(f"{option} activated", "success")
+            
+            # Handle specific toggles
+            if option == "NEW MAC":
+                self.on_mac_toggle_changed()
+            # Adicione outros handlers aqui para HWID, EFI, etc.
+                
         else:
             self.show_toast(f"{option} deactivated", "info")
+            
+            # Handle toggle deactivation
+            if option == "NEW MAC":
+                self.on_mac_reset()
+
+    def on_mac_toggle_changed(self):
+        """Handle MAC spoofing activation"""
+        logger.log_info("MAC spoofing requested", "MAC")
+        
+        # Show interface selection dialog
+        dialog = InterfaceSelectionDialog(self.root, self.mac_spoofer)
+        selected_interface, vendor_oui = dialog.show()
+        
+        if selected_interface:
+            # Execute spoofing in separate thread
+            thread = threading.Thread(
+                target=self.execute_mac_spoofing, 
+                args=(selected_interface, vendor_oui),
+                daemon=True
+            )
+            thread.start()
+        else:
+            # User cancelled, reset the toggle
+            self.toggle_switches["NEW MAC"].deselect()
+            self.toggle_states["NEW MAC"] = False
+            logger.log_info("MAC spoofing cancelled by user", "MAC")
+
+    def execute_mac_spoofing(self, interface_name, vendor_oui):
+        """Execute MAC spoofing in background thread"""
+        try:
+            logger.log_info(f"Starting MAC spoofing on {interface_name}", "MAC")
+            self.update_status(f"Spoofing MAC on {interface_name}...")
+            
+            success = self.mac_spoofer.spoof_mac_address(interface_name, vendor_oui)
+            
+            if success:
+                logger.log_success(f"MAC spoofing completed on {interface_name}", "MAC")
+                self.show_toast("MAC address spoofed successfully!", "success")
+                
+                # Refresh hardware info to show new MAC
+                self.root.after(1000, self.refresh_hardware_info)
+            else:
+                logger.log_error(f"MAC spoofing failed on {interface_name}", "MAC")
+                self.show_toast("MAC spoofing failed!", "error")
+                
+                # Reset the toggle on failure
+                self.root.after(0, self.reset_mac_toggle)
+                
+        except Exception as e:
+            logger.log_error(f"MAC spoofing error: {str(e)}", "MAC")
+            self.show_toast("MAC spoofing error occurred!", "error")
+            self.root.after(0, self.reset_mac_toggle)
+
+    def on_mac_reset(self):
+        """Handle MAC reset (when toggle is turned off)"""
+        logger.log_info("MAC reset requested", "MAC")
+        
+        if self.mac_spoofer.current_interface:
+            thread = threading.Thread(
+                target=self.execute_mac_reset,
+                args=(self.mac_spoofer.current_interface,),
+                daemon=True
+            )
+            thread.start()
+        else:
+            logger.log_warning("No active MAC spoofing session to reset", "MAC")
+            self.show_toast("No active MAC spoofing to reset", "info")
+
+    def execute_mac_reset(self, interface_name):
+        """Execute MAC reset in background thread"""
+        try:
+            logger.log_info(f"Resetting MAC on {interface_name}", "MAC")
+            self.update_status(f"Resetting MAC on {interface_name}...")
+            
+            success = self.mac_spoofer.reset_mac_address(interface_name)
+            
+            if success:
+                logger.log_success(f"MAC reset completed on {interface_name}", "MAC")
+                self.show_toast("MAC address reset to original!", "success")
+                
+                # Refresh hardware info to show original MAC
+                self.root.after(1000, self.refresh_hardware_info)
+            else:
+                logger.log_error(f"MAC reset failed on {interface_name}", "MAC")
+                self.show_toast("MAC reset failed!", "error")
+                
+        except Exception as e:
+            logger.log_error(f"MAC reset error: {str(e)}", "MAC")
+            self.show_toast("MAC reset error occurred!", "error")
+
+    def reset_mac_toggle(self):
+        """Reset MAC toggle to off state"""
+        self.toggle_switches["NEW MAC"].deselect()
+        self.toggle_states["NEW MAC"] = False
 
     def setup_logs_area(self, parent):
         logs_container = ctk.CTkFrame(parent, fg_color="#1a1a2e", corner_radius=15)
@@ -558,6 +673,7 @@ class MidnightSpooferGUI:
         self.logs_text.tag_config("warning", foreground="#ffaa00")
         self.logs_text.tag_config("system", foreground="#6b21ff")
         self.logs_text.tag_config("hardware", foreground="#b0b0ff")
+        self.logs_text.tag_config("mac", foreground="#b0b0ff")  # ← ADICIONADO: Cor para logs MAC
         self.logs_text.tag_config("info", foreground="#e0e0ff")
 
     def update_system_stats(self):
@@ -649,6 +765,19 @@ class MidnightSpooferGUI:
             logger.log_info("🚀 INITIATING SPOOFING PROTOCOL", "SPOOFING")
             logger.log_info("This will modify system files", "SPOOFING")
             logger.log_info("=" * 50, "SPOOFING")
+            
+            # Execute MAC spoofing se ativado
+            if self.toggle_states["NEW MAC"] and hasattr(self, 'mac_spoofer') and self.mac_spoofer:
+                logger.log_info("Executing MAC spoofing...", "MAC")
+                if hasattr(self, 'selected_interface') and hasattr(self, 'selected_vendor'):
+                    success = self.mac_spoofer.spoof_mac_address(
+                        self.selected_interface,
+                        self.selected_vendor
+                    )
+                    if success:
+                        logger.log_success("MAC address spoofed successfully", "MAC")
+                    else:
+                        logger.log_error("MAC spoofing failed", "MAC")
             
             # Mostra valores ANTES do spoof
             if self.hw_reader:
@@ -744,6 +873,7 @@ class MidnightSpooferGUI:
         • Network configuration reset
         • Registry sanitization
         • Hardware ID detection
+        • MAC Address spoofing 🆕
         
         ⚠️ Always run as Administrator
         for full functionality.
