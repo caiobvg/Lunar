@@ -64,7 +64,10 @@ class MidnightSpooferGUI:
             "NEW MAC": False,
             "ENABLE VPN": False
         }
-        
+        # Stored MAC selection (deferred until Start Spoofing)
+        self.selected_interface = None
+        self.selected_vendor = None
+
         self.setup_ui()
         self.process_log_queue()
         self.update_system_stats()
@@ -524,19 +527,18 @@ class MidnightSpooferGUI:
         # Show interface selection dialog
         dialog = InterfaceSelectionDialog(self.root, self.mac_spoofer)
         selected_interface, vendor_oui = dialog.show()
-        
+        # If user selected an interface, store it and notify user. Do NOT perform spoof now.
         if selected_interface:
-            # Execute spoofing in separate thread
-            thread = threading.Thread(
-                target=self.execute_mac_spoofing, 
-                args=(selected_interface, vendor_oui),
-                daemon=True
-            )
-            thread.start()
+            self.selected_interface = selected_interface
+            self.selected_vendor = vendor_oui
+            logger.log_info(f"MAC selection stored for {selected_interface} (vendor={vendor_oui})", "MAC")
+            self.show_toast("MAC interface selected. Spoof will run when you Start Spoofing.", "info")
         else:
-            # User cancelled, reset the toggle
+            # User cancelled, reset the toggle and clear selection
             self.toggle_switches["NEW MAC"].deselect()
             self.toggle_states["NEW MAC"] = False
+            self.selected_interface = None
+            self.selected_vendor = None
             logger.log_info("MAC spoofing cancelled by user", "MAC")
 
     def execute_mac_spoofing(self, interface_name, vendor_oui):
@@ -766,18 +768,21 @@ class MidnightSpooferGUI:
             logger.log_info("This will modify system files", "SPOOFING")
             logger.log_info("=" * 50, "SPOOFING")
             
-            # Execute MAC spoofing se ativado
-            if self.toggle_states["NEW MAC"] and hasattr(self, 'mac_spoofer') and self.mac_spoofer:
-                logger.log_info("Executing MAC spoofing...", "MAC")
-                if hasattr(self, 'selected_interface') and hasattr(self, 'selected_vendor'):
-                    success = self.mac_spoofer.spoof_mac_address(
-                        self.selected_interface,
-                        self.selected_vendor
-                    )
-                    if success:
+            # First: run cleaner operations (caches, logs, temps, network, registry, etc.)
+            logger.log_info("Executing cleaner operations first...", "SPOOFING")
+            success = self.cleaner.execute_real_spoofing()
+
+            # After cleaner completes, perform MAC spoofing if enabled and selection exists
+            if self.toggle_states.get("NEW MAC") and self.mac_spoofer and self.selected_interface:
+                logger.log_info("Executing MAC spoofing after cleaner...", "MAC")
+                try:
+                    mac_success = self.mac_spoofer.spoof_mac_address(self.selected_interface, self.selected_vendor)
+                    if mac_success:
                         logger.log_success("MAC address spoofed successfully", "MAC")
                     else:
                         logger.log_error("MAC spoofing failed", "MAC")
+                except Exception as e:
+                    logger.log_error(f"MAC spoofing error: {e}", "MAC")
             
             # Mostra valores ANTES do spoof
             if self.hw_reader:
@@ -789,8 +794,6 @@ class MidnightSpooferGUI:
                         logger.log_info(f"{key}: {display_value}", "HARDWARE")
                 except Exception as e:
                     logger.log_warning(f"Could not read hardware before spoof: {str(e)}", "HARDWARE")
-            
-            success = self.cleaner.execute_real_spoofing()
             
             if success:
                 self.last_spoof_time = datetime.now()
