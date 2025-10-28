@@ -69,6 +69,7 @@ class MidnightSpooferGUI:
         # Stored MAC selection (deferred until Start Spoofing)
         self.selected_interface = None
         self.selected_vendor = None
+        self.selected_mac = None
 
         self.setup_ui()
         self.process_log_queue()
@@ -535,11 +536,12 @@ class MidnightSpooferGUI:
         
         # Show interface selection dialog
         dialog = InterfaceSelectionDialog(self.root, self.mac_spoofer)
-        selected_interface, vendor_oui = dialog.show()
+        selected_interface, vendor_oui, selected_mac = dialog.show()
         # If user selected an interface, store it and notify user. Do NOT perform spoof now.
         if selected_interface:
             self.selected_interface = selected_interface
             self.selected_vendor = vendor_oui
+            self.selected_mac = selected_mac
             logger.log_info(f"MAC selection stored for {selected_interface} (vendor={vendor_oui})", "MAC")
             self.show_toast("MAC interface selected. Spoof will run when you Start Spoofing.", "info")
         else:
@@ -548,6 +550,7 @@ class MidnightSpooferGUI:
             self.toggle_states["NEW MAC"] = False
             self.selected_interface = None
             self.selected_vendor = None
+            self.selected_mac = None
             logger.log_info("MAC spoofing cancelled by user", "MAC")
 
     def execute_mac_spoofing(self, interface_name, vendor_oui):
@@ -750,44 +753,6 @@ class MidnightSpooferGUI:
         if not confirm:
             logger.log_warning("Spoofing cancelled by user", "USER")
             return
-        # If NEW MAC is enabled and a selection exists, show a small preview modal
-        if self.toggle_states.get("NEW MAC") and self.selected_interface:
-            preview = ctk.CTkToplevel(self.root)
-            preview.title("Preview MAC Spoofing")
-            preview.geometry("420x220")
-            preview.transient(self.root)
-            preview.grab_set()
-
-            # Determine preview MAC
-            if self.selected_vendor:
-                new_mac = self.mac_spoofer._generate_vendor_mac(self.selected_vendor)
-            else:
-                new_mac = self.mac_spoofer._generate_random_mac()
-
-            lbl = ctk.CTkLabel(preview, text=f"Interface: {self.selected_interface}", anchor="w")
-            lbl.pack(fill="x", padx=12, pady=(12,4))
-
-            lbl2 = ctk.CTkLabel(preview, text=f"Vendor: {self.selected_vendor or 'Random'}", anchor="w")
-            lbl2.pack(fill="x", padx=12, pady=4)
-
-            lbl3 = ctk.CTkLabel(preview, text=f"New MAC (preview): {new_mac}", anchor="w")
-            lbl3.pack(fill="x", padx=12, pady=4)
-
-            info = ctk.CTkLabel(preview, text=f"Dry-run: {self.dry_run_var.get()}", anchor="w")
-            info.pack(fill="x", padx=12, pady=8)
-
-            btn_frame = ctk.CTkFrame(preview)
-            btn_frame.pack(fill="x", padx=12, pady=12)
-
-            cancel = ctk.CTkButton(btn_frame, text="Cancel", command=lambda: preview.destroy())
-            cancel.pack(side="left", expand=True, padx=6)
-
-            proceed = ctk.CTkButton(btn_frame, text="Proceed", command=lambda: (preview.destroy(), self.start_spoofing()))
-            proceed.pack(side="left", expand=True, padx=6)
-
-            preview.wait_window()
-            # If preview closed via cancel, do not continue (start_spoofing called only by proceed)
-            return
 
         self.start_spoofing()
 
@@ -823,7 +788,7 @@ class MidnightSpooferGUI:
             if self.toggle_states.get("NEW MAC") and self.mac_spoofer and self.selected_interface:
                 logger.log_info("Executing MAC spoofing after cleaner...", "MAC")
                 try:
-                    mac_success = self.mac_spoofer.spoof_mac_address(self.selected_interface, self.selected_vendor)
+                    mac_success = self.mac_spoofer.spoof_mac_address(self.selected_interface, self.selected_vendor, self.selected_mac)
                     if mac_success:
                         logger.log_success("MAC address spoofed successfully", "MAC")
                     else:

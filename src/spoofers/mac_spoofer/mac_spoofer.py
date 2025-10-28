@@ -107,7 +107,7 @@ class MACSpoofer:
             
         return interfaces
 
-    def spoof_mac_address(self, interface_name, vendor_name=""):
+    def spoof_mac_address(self, interface_name, vendor_name="", new_mac=None):
         try:
             logger.log_info(f"Starting MAC spoofing for {interface_name}", "MAC")
             
@@ -125,10 +125,11 @@ class MACSpoofer:
             self.current_interface = interface_name
             
             # Gera novo MAC
-            if vendor_name in self.VENDOR_OUI:
-                new_mac = self._generate_vendor_mac(vendor_name)
-            else:
-                new_mac = self._generate_random_mac()
+            if not new_mac:
+                if vendor_name in self.VENDOR_OUI:
+                    new_mac = self._generate_vendor_mac(vendor_name)
+                else:
+                    new_mac = self._generate_random_mac()
             
             # Desativa interface
             if not self._disable_interface(interface_name):
