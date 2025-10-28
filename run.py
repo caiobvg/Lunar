@@ -27,9 +27,6 @@ def main():
                          "Right-click -> Run as administrator")
         return
     
-        if not response:
-            return
-    
     # Start the application
     app = MidnightSpooferGUI()
     app.run()

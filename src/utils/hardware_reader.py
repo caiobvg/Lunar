@@ -119,3 +119,31 @@ class HardwareReader:
             'cpu': "N/A",
             'mac': ':'.join(re.findall('..', '%012x' % uuid.getnode())).replace(':', '')
         }
+
+    def get_formatted_hardware_data(self, mac_spoofer=None):
+        """
+        Obtém e formata os dados de hardware para exibição na UI.
+        Opcionalmente, verifica se há um MAC spoofado ativo.
+        """
+        if not self:
+            return {
+                'disk_c': 'N/A', 'disk_d': 'N/A', 'motherboard': 'N/A',
+                'smbios_uuid': 'N/A', 'chassis': 'N/A', 'bios': 'N/A',
+                'cpu': 'N/A', 'mac': 'N/A'
+            }
+        
+        try:
+            hw_data = self.get_all_hardware_ids()
+            
+            # Se um spoofer de MAC for fornecido e houver um MAC spoofado, atualiza o valor
+            if mac_spoofer and mac_spoofer.current_interface and \
+               mac_spoofer.current_interface in mac_spoofer.original_interface_data:
+                current_mac = mac_spoofer.get_current_mac(mac_spoofer.current_interface)
+                if current_mac:
+                    hw_data['mac'] = f"{current_mac} 🎭"
+            
+            return hw_data
+        except Exception as e:
+            # Em caso de erro, retorna dados de fallback para não quebrar a UI
+            print(f"Error getting formatted hardware data: {e}")
+            return self._get_fallback_data()

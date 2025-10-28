@@ -20,6 +20,7 @@ from .components.buttons import AnimatedButton
 from .components.progress import CircularProgress
 from .components.toast import ToastNotification
 from .components.stats import SystemStats
+from controllers.spoofer_controller import SpoofingController
 
 
 class MidnightSpooferGUI:
@@ -33,7 +34,6 @@ class MidnightSpooferGUI:
         self.center_window()
         
         # Remove old queue system, use logger subscription
-        self.log_queue = queue.Queue()
         self.cleaner = SystemCleaner()
         
         # Initialize MAC spoofer
@@ -53,6 +53,17 @@ class MidnightSpooferGUI:
         except Exception as e:
             print(f"Warning: Hardware reader initialization failed: {e}")
             self.hw_reader = None
+
+        # Setup controller
+        ui_callbacks = {
+            'on_start': self.handle_spoofing_start,
+            'on_success': self.handle_spoofing_success,
+            'on_failure': self.handle_spoofing_failure,
+            'on_finish': self.handle_spoofing_finish,
+        }
+        self.controller = SpoofingController(
+            self.cleaner, self.mac_spoofer, self.hw_reader, ui_callbacks
+        )
         
         self.cleaning_in_progress = False
         self.sidebar_expanded = True
@@ -72,7 +83,6 @@ class MidnightSpooferGUI:
         self.selected_mac = None
 
         self.setup_ui()
-        self.process_log_queue()
         self.update_system_stats()
         
         # Use logger instead of direct UI calls
@@ -95,22 +105,6 @@ class MidnightSpooferGUI:
         x = (self.root.winfo_screenwidth() // 2) - (width // 2)
         y = (self.root.winfo_screenheight() // 2) - (height // 2)
         self.root.geometry(f'{width}x{height}+{x}+{y}')
-
-    def add_log_realtime(self, message):
-        """Deprecated - kept for backward compatibility during transition"""
-        if self.log_queue:
-            self.log_queue.put(message)
-
-    def process_log_queue(self):
-        """Deprecated - kept for backward compatibility"""
-        try:
-            while True:
-                message = self.log_queue.get_nowait()
-                self.add_log_ui(message)
-        except queue.Empty:
-            pass
-        finally:
-            self.root.after(100, self.process_log_queue)
 
     def add_log_ui(self, message):
         """Callback method for logger subscription - receives formatted messages"""
@@ -338,7 +332,7 @@ class MidnightSpooferGUI:
         spoofing_content.pack(fill="both", expand=True, padx=20, pady=(0, 20))
         
         # Obtém dados do hardware
-        hw_data = self.get_current_hardware_data()
+        hw_data = self.hw_reader.get_formatted_hardware_data(self.mac_spoofer)
         
         # Mapeamento dos dados de hardware
         hardware_data = [
@@ -369,34 +363,6 @@ class MidnightSpooferGUI:
             value_label.pack(side="left", padx=(5, 0))
             
             self.hardware_labels[label_text] = value_label
-
-    def get_current_hardware_data(self):
-        """Obtém dados de hardware, considerando MAC spoofado se aplicável"""
-        if not self.hw_reader:
-            return {
-                'disk_c': 'N/A', 'disk_d': 'N/A', 'motherboard': 'N/A',
-                'smbios_uuid': 'N/A', 'chassis': 'N/A', 'bios': 'N/A',
-                'cpu': 'N/A', 'mac': 'N/A'
-            }
-        
-        try:
-            hw_data = self.hw_reader.get_all_hardware_ids()
-            
-            # Se há MAC spoofado ativo, substitui o MAC real
-            if (self.mac_spoofer.current_interface and 
-                self.mac_spoofer.current_interface in self.mac_spoofer.original_interface_data):
-                current_mac = self.mac_spoofer.get_current_mac(self.mac_spoofer.current_interface)
-                if current_mac:
-                    hw_data['mac'] = f"{current_mac} 🎭"
-            
-            return hw_data
-        except Exception as e:
-            logger.log_error(f"Error getting hardware data: {e}", "HARDWARE")
-            return {
-                'disk_c': 'N/A', 'disk_d': 'N/A', 'motherboard': 'N/A',
-                'smbios_uuid': 'N/A', 'chassis': 'N/A', 'bios': 'N/A',
-                'cpu': 'N/A', 'mac': 'N/A'
-            }
 
     def setup_controls(self):
         """Configura a seção direita - Controls"""
@@ -451,7 +417,7 @@ class MidnightSpooferGUI:
         
         try:
             logger.log_info("Refreshing hardware information...", "HARDWARE")
-            hw_data = self.get_current_hardware_data()
+            hw_data = self.hw_reader.get_formatted_hardware_data(self.mac_spoofer)
             
             # Atualiza os labels
             hardware_mapping = {
@@ -770,74 +736,40 @@ class MidnightSpooferGUI:
         
         self.show_toast("Starting spoofing...", "info")
         
-        thread = threading.Thread(target=self.execute_spoofing)
-        thread.daemon = True
-        thread.start()
+        self.controller.start_spoofing_thread(
+            self.toggle_states,
+            self.selected_interface,
+            self.selected_vendor,
+            self.selected_mac
+        )
 
-    def execute_spoofing(self):
-        try:
-            logger.log_info("🚀 INITIATING SPOOFING PROTOCOL", "SPOOFING")
-            logger.log_info("This will modify system files", "SPOOFING")
-            logger.log_info("=" * 50, "SPOOFING")
-            
-            # First: run cleaner operations (caches, logs, temps, network, registry, etc.)
-            logger.log_info("Executing cleaner operations first...", "SPOOFING")
-            success = self.cleaner.execute_real_spoofing()
+    def handle_spoofing_start(self):
+        """Callback: Ações de UI quando o spoofing começa."""
+        # Este método já é chamado em start_spoofing, então podemos manter simples
+        pass
 
-            # After cleaner completes, perform MAC spoofing if enabled and selection exists
-            if self.toggle_states.get("NEW MAC") and self.mac_spoofer and self.selected_interface:
-                logger.log_info("Executing MAC spoofing after cleaner...", "MAC")
-                try:
-                    mac_success = self.mac_spoofer.spoof_mac_address(self.selected_interface, self.selected_vendor, self.selected_mac)
-                    if mac_success:
-                        logger.log_success("MAC address spoofed successfully", "MAC")
-                    else:
-                        logger.log_error("MAC spoofing failed", "MAC")
-                except Exception as e:
-                    logger.log_error(f"MAC spoofing error: {e}", "MAC")
-            
-            # Mostra valores ANTES do spoof
-            if self.hw_reader:
-                logger.log_info("Current Hardware IDs (BEFORE):", "HARDWARE")
-                try:
-                    hw_before = self.hw_reader.get_all_hardware_ids()
-                    for key, value in hw_before.items():
-                        display_value = value if len(str(value)) <= 40 else str(value)[:37] + "..."
-                        logger.log_info(f"{key}: {display_value}", "HARDWARE")
-                except Exception as e:
-                    logger.log_warning(f"Could not read hardware before spoof: {str(e)}", "HARDWARE")
-            
-            if success:
-                self.last_spoof_time = datetime.now()
-                
-                # Atualiza display após spoof
-                if self.hw_reader:
-                    logger.log_info("Refreshing hardware display...", "HARDWARE")
-                    try:
-                        self.refresh_hardware_info()
-                    except Exception as e:
-                        logger.log_warning(f"Could not refresh hardware display: {str(e)}", "HARDWARE")
-                
-                self.circular_progress.set_progress(100)
-                self.update_status("Spoofing completed!", is_success=True)
-                self.show_toast("Discord successfully spoofed!", "success")
-                logger.log_success("✅ SPOOFING COMPLETED!", "SUCCESS")
-                logger.log_success("Discord RPC has been modified", "SECURITY")
-                logger.log_success("FiveM cache has been cleared", "SECURITY")
-            else:
-                self.circular_progress.set_progress(75)
-                self.update_status("Some operations failed", is_error=True)
-                self.show_toast("Some spoofing operations failed", "warning")
-                logger.log_warning("⚠️  Some spoofing operations may have failed", "WARNING")
-            
-        except Exception as e:
-            logger.log_error(f"Spoofing failed completely: {str(e)}", "CRITICAL")
-            self.update_status("Critical failure", is_error=True)
-            self.show_toast("Spoofing failed critically!", "error")
-        finally:
-            self.cleaning_in_progress = False
-            self.spoof_button.configure(state="normal", text="🚀 START SPOOFING")
-            self.spoof_button.stop_pulse()
+    def handle_spoofing_success(self):
+        """Callback: Ações de UI em caso de sucesso."""
+        self.last_spoof_time = self.controller.last_spoof_time
+        if self.hw_reader:
+            logger.log_info("Refreshing hardware display after spoof...", "HARDWARE")
+            self.refresh_hardware_info()
+        
+        self.circular_progress.set_progress(100)
+        self.update_status("Spoofing completed!", is_success=True)
+        self.show_toast("System successfully spoofed!", "success")
+
+    def handle_spoofing_failure(self, reason=""):
+        """Callback: Ações de UI em caso de falha."""
+        self.circular_progress.set_progress(75) # Progresso parcial
+        self.update_status(reason, is_error=True)
+        self.show_toast(f"Spoofing failed: {reason}", "error")
+
+    def handle_spoofing_finish(self):
+        """Callback: Ações de UI ao finalizar (sucesso ou falha)."""
+        self.cleaning_in_progress = False
+        self.spoof_button.configure(state="normal", text="🚀 START SPOOFING")
+        self.spoof_button.stop_pulse()
 
     def clear_logs(self):
         self.logs_text.configure(state="normal")
