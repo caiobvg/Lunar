@@ -51,7 +51,7 @@
 
 ```bash
 git clone <repository-url>
-cd midnight-spoofer
+cd MidnightSpoofer
 pip install -r requirements.txt
 ```
 ## Run
