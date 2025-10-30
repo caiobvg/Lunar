@@ -24,7 +24,7 @@ from controllers.spoofer_controller import SpoofingController
 
 
 class MidnightSpooferGUI:
-    def __init__(self):
+    def __init__(self, spoofer_controller):
         self.root = ctk.CTk()
         self.root.title("Midnight Spoofer Beta")
         self.root.geometry("1400x900")
@@ -33,37 +33,19 @@ class MidnightSpooferGUI:
         
         self.center_window()
         
-        # Remove old queue system, use logger subscription
-        self.cleaner = SystemCleaner()
+        self.controller = spoofer_controller
         
-        # Initialize MAC spoofer
-        try:
-            self.mac_spoofer = MACSpoofer()
-            logger.log_info("MAC spoofer initialized successfully", "MAC")
-        except Exception as e:
-            logger.log_error(f"Failed to initialize MAC spoofer: {e}", "MAC")
-            self.mac_spoofer = None
-            
         # Register GUI as logger subscriber
         logger.add_subscriber(self.add_log_ui)
         
-        # Inicializa o leitor de hardware
-        try:
-            self.hw_reader = HardwareReader()
-        except Exception as e:
-            print(f"Warning: Hardware reader initialization failed: {e}")
-            self.hw_reader = None
-
-        # Setup controller
+        # Define and register UI callbacks with the controller
         ui_callbacks = {
             'on_start': self.handle_spoofing_start,
             'on_success': self.handle_spoofing_success,
             'on_failure': self.handle_spoofing_failure,
             'on_finish': self.handle_spoofing_finish,
         }
-        self.controller = SpoofingController(
-            self.cleaner, self.mac_spoofer, self.hw_reader, ui_callbacks
-        )
+        self.controller.set_ui_callbacks(ui_callbacks)
         
         self.cleaning_in_progress = False
         self.sidebar_expanded = True
@@ -93,7 +75,7 @@ class MidnightSpooferGUI:
         logger.log_info("MAC Spoofer module loaded", "MAC")
         
         # Move hardware initialization logs to after UI is fully set up
-        if self.hw_reader:
+        if self.controller.hw_reader:
             logger.log_info("Hardware reader initialized successfully", "HARDWARE")
         else:
             logger.log_warning("Hardware reader failed - using fallback data", "HARDWARE")
@@ -332,7 +314,7 @@ class MidnightSpooferGUI:
         spoofing_content.pack(fill="both", expand=True, padx=20, pady=(0, 20))
         
         # Obtém dados do hardware
-        hw_data = self.hw_reader.get_formatted_hardware_data(self.mac_spoofer)
+        hw_data = self.controller.hw_reader.get_formatted_hardware_data(self.controller.mac_spoofer)
         
         # Mapeamento dos dados de hardware
         hardware_data = [
@@ -410,14 +392,14 @@ class MidnightSpooferGUI:
 
     def refresh_hardware_info(self):
         """Atualiza as informações de hardware na interface"""
-        if not self.hw_reader:
+        if not self.controller.hw_reader:
             logger.log_error("Hardware reader not available", "HARDWARE")
             self.show_toast("Hardware reader unavailable", "error")
             return
         
         try:
             logger.log_info("Refreshing hardware information...", "HARDWARE")
-            hw_data = self.hw_reader.get_formatted_hardware_data(self.mac_spoofer)
+            hw_data = self.controller.hw_reader.get_formatted_hardware_data(self.controller.mac_spoofer)
             
             # Atualiza os labels
             hardware_mapping = {
@@ -501,7 +483,7 @@ class MidnightSpooferGUI:
         logger.log_info("MAC spoofing requested", "MAC")
         
         # Show interface selection dialog
-        dialog = InterfaceSelectionDialog(self.root, self.mac_spoofer)
+        dialog = InterfaceSelectionDialog(self.root, self.controller.mac_spoofer)
         selected_interface, vendor_oui, selected_mac = dialog.show()
         # If user selected an interface, store it and notify user. Do NOT perform spoof now.
         if selected_interface:
@@ -525,7 +507,7 @@ class MidnightSpooferGUI:
             logger.log_info(f"Starting MAC spoofing on {interface_name}", "MAC")
             self.update_status(f"Spoofing MAC on {interface_name}...")
             
-            success = self.mac_spoofer.spoof_mac_address(interface_name, vendor_oui)
+            success = self.controller.mac_spoofer.spoof_mac_address(interface_name, vendor_oui)
             
             if success:
                 logger.log_success(f"MAC spoofing completed on {interface_name}", "MAC")
@@ -549,10 +531,10 @@ class MidnightSpooferGUI:
         """Handle MAC reset (when toggle is turned off)"""
         logger.log_info("MAC reset requested", "MAC")
         
-        if self.mac_spoofer.current_interface:
+        if self.controller.mac_spoofer.current_interface:
             thread = threading.Thread(
                 target=self.execute_mac_reset,
-                args=(self.mac_spoofer.current_interface,),
+                args=(self.controller.mac_spoofer.current_interface,),
                 daemon=True
             )
             thread.start()
@@ -566,7 +548,7 @@ class MidnightSpooferGUI:
             logger.log_info(f"Resetting MAC on {interface_name}", "MAC")
             self.update_status(f"Resetting MAC on {interface_name}...")
             
-            success = self.mac_spoofer.reset_mac_address(interface_name)
+            success = self.controller.mac_spoofer.reset_mac_address(interface_name)
             
             if success:
                 logger.log_success(f"MAC reset completed on {interface_name}", "MAC")
@@ -751,7 +733,7 @@ class MidnightSpooferGUI:
     def handle_spoofing_success(self):
         """Callback: Ações de UI em caso de sucesso."""
         self.last_spoof_time = self.controller.last_spoof_time
-        if self.hw_reader:
+        if self.controller.hw_reader:
             logger.log_info("Refreshing hardware display after spoof...", "HARDWARE")
             self.refresh_hardware_info()
         

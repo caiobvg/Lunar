@@ -5,12 +5,18 @@ from datetime import datetime
 from utils.logger import logger
 
 class SpoofingController:
-    def __init__(self, cleaner, mac_spoofer, hw_reader, ui_callbacks):
+    def __init__(self, cleaner, mac_spoofer, hwid_spoofer, guid_spoofer, hw_reader):
         self.cleaner = cleaner
         self.mac_spoofer = mac_spoofer
+        self.hwid_spoofer = hwid_spoofer
+        self.guid_spoofer = guid_spoofer
         self.hw_reader = hw_reader
-        self.ui_callbacks = ui_callbacks
+        self.ui_callbacks = {}  # Will be set by the GUI
         self.last_spoof_time = None
+
+    def set_ui_callbacks(self, callbacks):
+        """Allows the GUI to register its callbacks with the controller."""
+        self.ui_callbacks = callbacks
 
     def start_spoofing_thread(self, toggle_states, selected_interface, selected_vendor, selected_mac):
         """Inicia a sequência de spoofing em uma nova thread."""
@@ -58,6 +64,30 @@ class SpoofingController:
                         logger.log_error("MAC spoofing failed", "MAC")
                 except Exception as e:
                     logger.log_error(f"MAC spoofing error: {e}", "MAC")
+
+            # Executa spoofing de HWID se habilitado
+            if toggle_states.get("HWID") and self.hwid_spoofer:
+                logger.log_info("Executing HWID spoofing...", "HWID")
+                try:
+                    hwid_success = self.hwid_spoofer.spoof_hwid()
+                    if hwid_success:
+                        logger.log_success("HWID spoofed successfully", "HWID")
+                    else:
+                        logger.log_error("HWID spoofing failed", "HWID")
+                except Exception as e:
+                    logger.log_error(f"HWID spoofing error: {e}", "HWID")
+
+            # Executa spoofing de GUID se habilitado
+            if toggle_states.get("GUID") and self.guid_spoofer:
+                logger.log_info("Executing GUID spoofing...", "GUID")
+                try:
+                    guid_success = self.guid_spoofer.spoof_guid()
+                    if guid_success:
+                        logger.log_success("GUID spoofed successfully", "GUID")
+                    else:
+                        logger.log_error("GUID spoofing failed", "GUID")
+                except Exception as e:
+                    logger.log_error(f"GUID spoofing error: {e}", "GUID")
             
             if cleaner_success:
                 self.last_spoof_time = datetime.now()

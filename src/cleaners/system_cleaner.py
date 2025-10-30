@@ -12,40 +12,32 @@ import random
 import string
 import time
 from datetime import datetime
+from utils.logger import logger
 
 class SystemCleaner:
-    def __init__(self, realtime_callback=None):
-        self.log_messages = []
-        self.realtime_callback = realtime_callback
+    def __init__(self):
         self.total_operations = 0
         self.completed_operations = 0
-    
-    def add_log_realtime(self, message):
-        """Send log message in real time"""
-        if self.realtime_callback:
-            self.realtime_callback(message)
-        self.log_messages.append(message)
-        return message
-    
+
     def get_progress(self):
         """Calculate current progress percentage"""
         if self.total_operations == 0:
             return 0
         return (self.completed_operations / self.total_operations) * 100
-    
+
     def timed_operation(self, operation_name, operation_func):
         """Execute operation with timing and logging"""
         start_time = time.time()
-        self.add_log_realtime(f"[PROCESS] Starting: {operation_name}")
+        logger.info(f"Starting: {operation_name}", context="CLEANER")
         
         try:
             result = operation_func()
             elapsed_time = time.time() - start_time
-            self.add_log_realtime(f"[SUCCESS] {operation_name} - Done in {elapsed_time:.2f}s")
+            logger.success(f"{operation_name} - Done in {elapsed_time:.2f}s", context="CLEANER")
             return result
         except Exception as e:
             elapsed_time = time.time() - start_time
-            self.add_log_realtime(f"[ERROR] {operation_name} - Failed after {elapsed_time:.2f}s: {str(e)}")
+            logger.error(f"{operation_name} - Failed after {elapsed_time:.2f}s: {str(e)}", context="CLEANER")
             raise
     
     def kill_target_processes(self):
@@ -68,7 +60,7 @@ class SystemCleaner:
                                 proc.kill()
                                 proc.wait(timeout=3)  # Wait for termination
                                 killed += 1
-                                self.add_log_realtime(f"[TERMINATE] Killed: {proc.info['name']} (PID: {proc.info['pid']})")
+                                logger.info(f"Killed: {proc.info['name']} (PID: {proc.info['pid']})", context="TERMINATE")
                                 break
                             except (psutil.NoSuchProcess, psutil.TimeoutExpired):
                                 # Process already dead or stuck
@@ -86,13 +78,13 @@ class SystemCleaner:
                             try:
                                 proc.kill()
                                 killed += 1
-                                self.add_log_realtime(f"[FORCE KILL] Terminated: {proc.info['name']}")
+                                logger.warning(f"Forcefully terminated: {proc.info['name']}", context="TERMINATE")
                             except:
                                 continue
                 except:
                     continue
             
-            self.add_log_realtime(f"[STATUS] {killed} processes terminated")
+            logger.info(f"{killed} processes terminated", context="STATUS")
             return killed > 0
         
         return self.timed_operation("Process Termination", _kill)
@@ -127,9 +119,9 @@ class SystemCleaner:
                     try:
                         shutil.rmtree(path, ignore_errors=True)
                         cleaned_count += 1
-                        self.add_log_realtime(f"[CLEAN] Purged directory: {os.path.basename(path)}")
+                        logger.info(f"Purged directory: {os.path.basename(path)}", context="CLEAN")
                     except Exception as e:
-                        self.add_log_realtime(f"[WARNING] Failed to delete {path}: {str(e)}")
+                        logger.warning(f"Failed to delete {path}: {str(e)}", context="CLEAN")
             
             # Clean specific file types but skip blacklisted files
             fivem_app_path = os.path.join(os.environ['LOCALAPPDATA'], 'FiveM', 'FiveM.app')
@@ -147,16 +139,16 @@ class SystemCleaner:
                                 # Check if file is blacklisted
                                 filename = os.path.basename(file_path).lower()
                                 if any(blacklisted_file in filename for blacklisted_file in FILE_BLACKLIST):
-                                    self.add_log_realtime(f"[BLACKLIST] Preserved: {filename}")
+                                    logger.debug(f"Preserved blacklisted file: {filename}", context="BLACKLIST")
                                     continue
                                     
                                 os.remove(file_path)
                                 cleaned_count += 1
-                                self.add_log_realtime(f"[DELETE] Removed file: {os.path.basename(file_path)}")
+                                logger.info(f"Removed file: {os.path.basename(file_path)}", context="DELETE")
                             except Exception as e:
-                                self.add_log_realtime(f"[WARNING] Failed to remove {file_path}: {str(e)}")
+                                logger.warning(f"Failed to remove {file_path}: {str(e)}", context="DELETE")
                 except Exception as e:
-                    self.add_log_realtime(f"[WARNING] Error scanning FiveM files: {str(e)}")
+                    logger.warning(f"Error scanning FiveM files: {str(e)}", context="CLEAN")
             
             # Clean additional locations (keeping main FiveM dir)
             additional_paths = [
@@ -169,11 +161,11 @@ class SystemCleaner:
                     try:
                         shutil.rmtree(path, ignore_errors=True)
                         cleaned_count += 1
-                        self.add_log_realtime(f"[CLEAN] Cleaned location: {os.path.basename(path)}")
+                        logger.info(f"Cleaned location: {os.path.basename(path)}", context="CLEAN")
                     except Exception as e:
-                        self.add_log_realtime(f"[WARNING] Failed to clean {path}: {str(e)}")
+                        logger.warning(f"Failed to clean {path}: {str(e)}", context="CLEAN")
             
-            self.add_log_realtime(f"[STATUS] FiveM cleanup: {cleaned_count} items removed")
+            logger.info(f"FiveM cleanup: {cleaned_count} items removed", context="STATUS")
             return cleaned_count > 0
         
         return self.timed_operation("FiveM Cache Purge", _clean)
@@ -210,11 +202,11 @@ class SystemCleaner:
                                                 if os.path.exists(old_path):
                                                     os.rename(old_path, new_path)
                                                     renamed_count += 1
-                                                    self.add_log_realtime(f"[MODIFY] Renamed RPC: {module_item} -> {new_name}")
+                                                    logger.info(f"Renamed RPC: {module_item} -> {new_name}", context="MODIFY")
                                             except Exception as e:
-                                                self.add_log_realtime(f"[WARNING] Failed to rename {module_item}: {str(e)}")
+                                                logger.warning(f"Failed to rename {module_item}: {str(e)}", context="MODIFY")
                     except Exception as e:
-                        self.add_log_realtime(f"[ERROR] Error in {base_path}: {str(e)}")
+                        logger.error(f"Error in {base_path}: {str(e)}", context="CLEAN")
             
             # Clean Discord caches
             discord_cache_paths = [
@@ -229,9 +221,9 @@ class SystemCleaner:
                 if os.path.exists(cache_path):
                     try:
                         shutil.rmtree(cache_path, ignore_errors=True)
-                        self.add_log_realtime(f"[CLEAN] Cleared cache: {os.path.basename(cache_path)}")
+                        logger.info(f"Cleared cache: {os.path.basename(cache_path)}", context="CLEAN")
                     except Exception as e:
-                        self.add_log_realtime(f"[WARNING] Failed to clear {cache_path}: {str(e)}")
+                        logger.warning(f"Failed to clear {cache_path}: {str(e)}", context="CLEAN")
             
             # Clean Discord storage
             discord_storage_paths = [
@@ -244,11 +236,11 @@ class SystemCleaner:
                 if os.path.exists(storage_path):
                     try:
                         shutil.rmtree(storage_path, ignore_errors=True)
-                        self.add_log_realtime(f"[CLEAN] Cleared storage: {os.path.basename(storage_path)}")
+                        logger.info(f"Cleared storage: {os.path.basename(storage_path)}", context="CLEAN")
                     except Exception as e:
-                        self.add_log_realtime(f"[WARNING] Failed to clear {storage_path}: {str(e)}")
+                        logger.warning(f"Failed to clear {storage_path}: {str(e)}", context="CLEAN")
             
-            self.add_log_realtime(f"[STATUS] Discord spoofing: {renamed_count} RPC modules modified")
+            logger.info(f"Discord spoofing: {renamed_count} RPC modules modified", context="STATUS")
             return renamed_count > 0
         
         return self.timed_operation("Discord RPC Spoofing", _clean)
@@ -287,7 +279,7 @@ class SystemCleaner:
                                 # Skip problematic files
                                 continue
                     except Exception as e:
-                        self.add_log_realtime(f"[WARNING] Error cleaning {temp_path}: {str(e)}")
+                        logger.warning(f"Error cleaning {temp_path}: {str(e)}", context="CLEAN")
             
             # Clean browser caches
             browser_paths = [
@@ -301,11 +293,11 @@ class SystemCleaner:
                     try:
                         shutil.rmtree(browser_path, ignore_errors=True)
                         cleaned_count += 1
-                        self.add_log_realtime(f"[CLEAN] Cleared browser cache: {os.path.basename(browser_path)}")
+                        logger.info(f"Cleared browser cache: {os.path.basename(browser_path)}", context="CLEAN")
                     except Exception as e:
-                        self.add_log_realtime(f"[WARNING] Failed to clear {browser_path}: {str(e)}")
+                        logger.warning(f"Failed to clear {browser_path}: {str(e)}", context="CLEAN")
             
-            self.add_log_realtime(f"[CLEAN] Temp files: {cleaned_count} items removed")
+            logger.info(f"Temp files: {cleaned_count} items removed", context="CLEAN")
             return cleaned_count > 0
         
         return self.timed_operation("System Temp Cleanup", _clean)
@@ -335,37 +327,37 @@ class SystemCleaner:
                             if os.path.exists('reset.log'):
                                 os.remove('reset.log')  # Cleanup log
                             success_count += 1
-                            self.add_log_realtime(f"[NETWORK] {name}: Success")
+                            logger.info(f"{name}: Success", context="NETWORK")
                         except Exception as e:
-                            self.add_log_realtime(f"[WARNING] {name}: Partial - {str(e)}")
+                            logger.warning(f"{name}: Partial - {str(e)}", context="NETWORK")
                     else:
                         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, shell=True)
                         if result.returncode == 0:
                             success_count += 1
-                            self.add_log_realtime(f"[NETWORK] {name}: Success")
+                            logger.info(f"{name}: Success", context="NETWORK")
                         else:
                             # Try alternative method
                             try:
                                 alt_result = subprocess.run(cmd, timeout=30, shell=True)
                                 if alt_result.returncode == 0:
                                     success_count += 1
-                                    self.add_log_realtime(f"[NETWORK] {name}: Success (alt)")
+                                    logger.info(f"{name}: Success (alt)", context="NETWORK")
                                 else:
-                                    self.add_log_realtime(f"[WARNING] {name}: Failed")
+                                    logger.warning(f"{name}: Failed", context="NETWORK")
                             except:
-                                self.add_log_realtime(f"[WARNING] {name}: Failed")
+                                logger.warning(f"{name}: Failed", context="NETWORK")
                 except Exception as e:
-                    self.add_log_realtime(f"[WARNING] {name}: Error - {str(e)}")
+                    logger.warning(f"{name}: Error - {str(e)}", context="NETWORK")
             
             # Extra network cleanup
             try:
                 subprocess.run(['nbtstat', '-R'], capture_output=True, shell=True)
                 subprocess.run(['nbtstat', '-RR'], capture_output=True, shell=True)
-                self.add_log_realtime("[NETWORK] NetBIOS cache cleared")
+                logger.info("NetBIOS cache cleared", context="NETWORK")
             except:
                 pass
             
-            self.add_log_realtime(f"[STATUS] Network reset: {success_count}/{len(commands)} operations")
+            logger.info(f"Network reset: {success_count}/{len(commands)} operations", context="STATUS")
             return success_count >= 3  # Most should work
         
         return self.timed_operation("Network Stack Reset", _reset)
@@ -399,7 +391,7 @@ class SystemCleaner:
                     
                     if result.returncode == 0:
                         cleaned_count += 1
-                        self.add_log_realtime(f"[REGISTRY] Deleted key: {key_path}")
+                        logger.info(f"Deleted key: {key_path}", context="REGISTRY")
                     else:
                         # Fallback to Python method
                         try:
@@ -412,7 +404,7 @@ class SystemCleaner:
                                 try:
                                     winreg.DeleteKey(hive, key_path)
                                     cleaned_count += 1
-                                    self.add_log_realtime(f"[REGISTRY] Cleaned key: {key_path}")
+                                    logger.info(f"Cleaned key: {key_path}", context="REGISTRY")
                                 except PermissionError:
                                     # Try recursive deletion
                                     try:
@@ -430,17 +422,17 @@ class SystemCleaner:
                                             winreg.CloseKey(key)
                                             winreg.DeleteKey(hive, key_path)
                                             cleaned_count += 1
-                                            self.add_log_realtime(f"[REGISTRY] Recursive clean: {key_path}")
+                                            logger.info(f"Recursively cleaned key: {key_path}", context="REGISTRY")
                                         except:
-                                            self.add_log_realtime(f"[WARNING] Complex delete failed: {key_path}")
+                                            logger.warning(f"Complex recursive delete failed for: {key_path}", context="REGISTRY")
                                     except:
-                                        self.add_log_realtime(f"[WARNING] No permission: {key_path}")
+                                        logger.warning(f"Permission denied for key: {key_path}", context="REGISTRY")
                             except FileNotFoundError:
-                                self.add_log_realtime(f"[INFO] Key not found: {key_path}")
+                                logger.debug(f"Registry key not found: {key_path}", context="REGISTRY")
                         except Exception as e:
-                            self.add_log_realtime(f"[WARNING] Failed to clean {key_path}: {str(e)}")
+                            logger.warning(f"Failed to clean {key_path}: {str(e)}", context="REGISTRY")
                 except Exception as e:
-                    self.add_log_realtime(f"[WARNING] Registry error {key_path}: {str(e)}")
+                    logger.error(f"Registry error for {key_path}: {str(e)}", context="REGISTRY")
             
             # Extra cleanup for stubborn keys
             stubborn_keys = [
@@ -461,25 +453,23 @@ class SystemCleaner:
                         result = subprocess.run(cmd, capture_output=True, timeout=5, shell=True)
                         if result.returncode == 0:
                             cleaned_count += 1
-                            self.add_log_realtime(f"[REGISTRY] Removed stubborn key: {key}")
+                            logger.info(f"Removed stubborn key: {key}", context="REGISTRY")
                             break
                 except:
                     continue
             
-            self.add_log_realtime(f"[STATUS] Registry cleanup: {cleaned_count} entries")
+            logger.info(f"Registry cleanup: {cleaned_count} entries", context="STATUS")
             return cleaned_count > 0
         
         return self.timed_operation("Registry Cleanup", _clean)
     
     def execute_real_spoofing(self):
         """Main method - execute full spoofing routine"""
-        self.log_messages.clear()
-        
         start_time = time.time()
-        self.add_log_realtime("=" * 60)
-        self.add_log_realtime("[REAL] 🚀 STARTING REAL SPOOFING PROTOCOL")
-        self.add_log_realtime("[REAL] Performing ACTUAL system modifications")
-        self.add_log_realtime("=" * 60)
+        logger.info("=" * 60, context="SPOOFING")
+        logger.info("STARTING SPOOFING PROTOCOL", context="SPOOFING")
+        logger.info("Performing ACTUAL system modifications", context="SPOOFING")
+        logger.info("=" * 60, context="SPOOFING")
         
         # Operations in optimal order
         operations = [
@@ -496,32 +486,32 @@ class SystemCleaner:
         
         results = []
         for op_name, op_function in operations:
-            self.add_log_realtime(f"[REAL] Running: {op_name}")
+            logger.info(f"Running: {op_name}", context="SPOOFING")
             try:
                 result = op_function()
                 results.append(result)
                 self.completed_operations += 1
                 progress = self.get_progress()
-                self.add_log_realtime(f"[REAL] Progress: {self.completed_operations}/{self.total_operations} ({progress:.1f}%)")
+                logger.info(f"Progress: {self.completed_operations}/{self.total_operations} ({progress:.1f}%)", context="SPOOFING")
             except Exception as e:
-                self.add_log_realtime(f"[ERROR] {op_name} failed: {str(e)}")
+                logger.error(f"{op_name} failed: {str(e)}", context="SPOOFING")
                 results.append(False)
         
         success_count = sum(1 for r in results if r)
         total_time = time.time() - start_time
         
-        self.add_log_realtime("=" * 60)
-        self.add_log_realtime(f"[REAL] SPOOFING COMPLETE: {success_count}/{self.total_operations} operations successful")
-        self.add_log_realtime(f"[STATS] Total time: {total_time:.2f}s")
+        logger.info("=" * 60, context="SPOOFING")
+        logger.info(f"SPOOFING COMPLETE: {success_count}/{self.total_operations} operations successful", context="SPOOFING")
+        logger.info(f"Total time: {total_time:.2f}s", context="STATS")
         
         if success_count >= 4:  # Most operations successful
-            self.add_log_realtime("[REAL] ✅ SPOOFING SUCCESSFUL!")
-            self.add_log_realtime("[REAL] Discord RPC modified")
-            self.add_log_realtime("[REAL] FiveM cache cleared") 
-            self.add_log_realtime("[REAL] System identity spoofed")
+            logger.success("✅ SPOOFING SUCCESSFUL!", context="SPOOFING")
+            logger.info("Discord RPC modified", context="SPOOFING")
+            logger.info("FiveM cache cleared", context="SPOOFING")
+            logger.info("System identity spoofed", context="SPOOFING")
         else:
-            self.add_log_realtime("[REAL] ⚠️  Partial success - some operations failed")
+            logger.warning("⚠️ Partial success - some operations failed", context="SPOOFING")
         
-        self.add_log_realtime("=" * 60)
+        logger.info("=" * 60, context="SPOOFING")
         
         return success_count >= 4
