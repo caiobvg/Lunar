@@ -4,7 +4,7 @@
 
 **System Spoofing & Cleaning Tool**
 
-![Version](https://img.shields.io/badge/version-4.0.0-purple.svg)
+![Version](https://img.shields.io/badge/version-BETA-purple.svg)
 ![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-windows-lightgrey.svg)
 
