@@ -13,11 +13,29 @@ import string
 import time
 from datetime import datetime
 from utils.logger import logger
+from .system_paths import (
+    PROCESSES_TO_KILL,
+    FIVEM_PATHS,
+    DISCORD_PATHS,
+    SYSTEM_TEMP_PATHS,
+    BROWSER_CACHE_PATHS,
+    REGISTRY_CLEANING_PATHS,
+    DISCORD_CACHE_PATHS,
+    DISCORD_STORAGE_PATHS
+)
 
 class SystemCleaner:
     def __init__(self):
         self.total_operations = 0
         self.completed_operations = 0
+        self.processes_to_kill = PROCESSES_TO_KILL
+        self.fivem_paths = FIVEM_PATHS
+        self.discord_paths = DISCORD_PATHS
+        self.system_temp_paths = SYSTEM_TEMP_PATHS
+        self.browser_cache_paths = BROWSER_CACHE_PATHS
+        self.registry_cleaning_paths = REGISTRY_CLEANING_PATHS
+        self.discord_cache_paths = DISCORD_CACHE_PATHS
+        self.discord_storage_paths = DISCORD_STORAGE_PATHS
 
     def get_progress(self):
         """Calculate current progress percentage"""
@@ -43,18 +61,13 @@ class SystemCleaner:
     def kill_target_processes(self):
         """Kill target processes with better detection"""
         def _kill():
-            # Processes we want to terminate
-            processes_to_kill = [
-                'discord', 'fivem', 'steam', 'steamwebhelper', 
-                'epicgameslauncher', 'socialclub', 'rockstargames'
-            ]
             killed = 0
             
             # First pass - normal kill
             for proc in psutil.process_iter(['name', 'pid']):
                 try:
                     proc_name = proc.info['name'].lower() if proc.info['name'] else ''
-                    for target in processes_to_kill:
+                    for target in self.processes_to_kill:
                         if target in proc_name:
                             try:
                                 proc.kill()
@@ -73,7 +86,7 @@ class SystemCleaner:
             for proc in psutil.process_iter(['name']):
                 try:
                     proc_name = proc.info['name'].lower() if proc.info['name'] else ''
-                    for target in processes_to_kill:
+                    for target in self.processes_to_kill:
                         if target in proc_name:
                             try:
                                 proc.kill()
@@ -102,19 +115,8 @@ class SystemCleaner:
                 'citizenfx.exe'
             ]
             
-            # FiveM paths to clean
-            fivem_paths = [
-                os.path.join(os.environ['LOCALAPPDATA'], 'FiveM', 'FiveM.app', 'cache'),
-                os.path.join(os.environ['LOCALAPPDATA'], 'FiveM', 'FiveM.app', 'logs'),
-                os.path.join(os.environ['LOCALAPPDATA'], 'FiveM', 'FiveM.app', 'crashes'),
-                os.path.join(os.environ['LOCALAPPDATA'], 'DigitalEntitlements'),
-                os.path.join(os.environ['APPDATA'], 'CitizenFX'),
-                os.path.join(os.environ['LOCALAPPDATA'], 'FiveM', 'FiveM.app', 'data', 'cache'),
-                os.path.join(os.environ['LOCALAPPDATA'], 'FiveM', 'FiveM.app', 'browser'),
-            ]
-            
             cleaned_count = 0
-            for path in fivem_paths:
+            for path in self.fivem_paths:
                 if os.path.exists(path):
                     try:
                         shutil.rmtree(path, ignore_errors=True)
@@ -150,21 +152,6 @@ class SystemCleaner:
                 except Exception as e:
                     logger.warning(f"Error scanning FiveM files: {str(e)}", context="CLEAN")
             
-            # Clean additional locations (keeping main FiveM dir)
-            additional_paths = [
-                os.path.join(os.environ['USERPROFILE'], 'AppData', 'Roaming', 'CitizenFX'),
-                os.path.join(os.environ['USERPROFILE'], 'Documents', 'Rockstar Games'),
-            ]
-            
-            for path in additional_paths:
-                if os.path.exists(path):
-                    try:
-                        shutil.rmtree(path, ignore_errors=True)
-                        cleaned_count += 1
-                        logger.info(f"Cleaned location: {os.path.basename(path)}", context="CLEAN")
-                    except Exception as e:
-                        logger.warning(f"Failed to clean {path}: {str(e)}", context="CLEAN")
-            
             logger.info(f"FiveM cleanup: {cleaned_count} items removed", context="STATUS")
             return cleaned_count > 0
         
@@ -173,15 +160,8 @@ class SystemCleaner:
     def spoof_discord_rpc(self):
         """Rename Discord RPC modules to break tracking"""
         def _clean():
-            discord_paths = [
-                os.path.join(os.environ['APPDATA'], 'discord'),
-                os.path.join(os.environ['LOCALAPPDATA'], 'Discord'),
-                os.path.join(os.environ['LOCALAPPDATA'], 'DiscordCanary'),
-                os.path.join(os.environ['LOCALAPPDATA'], 'DiscordPTB'),
-            ]
-            
             renamed_count = 0
-            for base_path in discord_paths:
+            for base_path in self.discord_paths:
                 if os.path.exists(base_path):
                     try:
                         # Find version folders (like 0.0.309)
@@ -209,15 +189,7 @@ class SystemCleaner:
                         logger.error(f"Error in {base_path}: {str(e)}", context="CLEAN")
             
             # Clean Discord caches
-            discord_cache_paths = [
-                os.path.join(os.environ['LOCALAPPDATA'], 'Discord', 'Cache'),
-                os.path.join(os.environ['LOCALAPPDATA'], 'DiscordCanary', 'Cache'),
-                os.path.join(os.environ['LOCALAPPDATA'], 'DiscordPTB', 'Cache'),
-                os.path.join(os.environ['LOCALAPPDATA'], 'Discord', 'Code Cache'),
-                os.path.join(os.environ['LOCALAPPDATA'], 'Discord', 'GPUCache'),
-            ]
-            
-            for cache_path in discord_cache_paths:
+            for cache_path in self.discord_cache_paths:
                 if os.path.exists(cache_path):
                     try:
                         shutil.rmtree(cache_path, ignore_errors=True)
@@ -226,13 +198,7 @@ class SystemCleaner:
                         logger.warning(f"Failed to clear {cache_path}: {str(e)}", context="CLEAN")
             
             # Clean Discord storage
-            discord_storage_paths = [
-                os.path.join(os.environ['LOCALAPPDATA'], 'Discord', 'Local Storage'),
-                os.path.join(os.environ['LOCALAPPDATA'], 'DiscordCanary', 'Local Storage'),
-                os.path.join(os.environ['LOCALAPPDATA'], 'DiscordPTB', 'Local Storage'),
-            ]
-            
-            for storage_path in discord_storage_paths:
+            for storage_path in self.discord_storage_paths:
                 if os.path.exists(storage_path):
                     try:
                         shutil.rmtree(storage_path, ignore_errors=True)
@@ -248,16 +214,8 @@ class SystemCleaner:
     def clean_system_temp(self):
         """Clean system temp files safely"""
         def _clean():
-            temp_locations = [
-                os.environ.get('TEMP', ''),
-                os.environ.get('TMP', ''),
-                os.path.join(os.environ['LOCALAPPDATA'], 'Temp'),
-                r'C:\Windows\Temp',
-                os.path.join(os.environ['USERPROFILE'], 'AppData', 'Local', 'Temp'),
-            ]
-            
             cleaned_count = 0
-            for temp_path in temp_locations:
+            for temp_path in self.system_temp_paths:
                 if os.path.exists(temp_path):
                     try:
                         # Be careful with system files
@@ -281,14 +239,7 @@ class SystemCleaner:
                     except Exception as e:
                         logger.warning(f"Error cleaning {temp_path}: {str(e)}", context="CLEAN")
             
-            # Clean browser caches
-            browser_paths = [
-                os.path.join(os.environ['LOCALAPPDATA'], 'Google', 'Chrome', 'User Data', 'Default', 'Cache'),
-                os.path.join(os.environ['LOCALAPPDATA'], 'Microsoft', 'Edge', 'User Data', 'Default', 'Cache'),
-                os.path.join(os.environ['APPDATA'], 'Mozilla', 'Firefox', 'Profiles'),
-            ]
-            
-            for browser_path in browser_paths:
+            for browser_path in self.browser_cache_paths:
                 if os.path.exists(browser_path):
                     try:
                         shutil.rmtree(browser_path, ignore_errors=True)
@@ -365,25 +316,17 @@ class SystemCleaner:
     def clean_registry_entries(self):
         """Clean registry entries safely"""
         def _clean():
-            registry_targets = [
-                (winreg.HKEY_CURRENT_USER, r'Software\CitizenFX'),
-                (winreg.HKEY_CURRENT_USER, r'Software\FiveM'),
-                (winreg.HKEY_CURRENT_USER, r'Software\Rockstar Games'),
-                (winreg.HKEY_CURRENT_USER, r'Software\Valve\Steam'),
-                (winreg.HKEY_CURRENT_USER, r'Software\Rockstar Games Launcher'),
-                (winreg.HKEY_CURRENT_USER, r'Software\Epic Games'),
-            ]
-            
             cleaned_count = 0
             
             # Try reg.exe first (better permissions)
-            for hive, key_path in registry_targets:
+            for key_path, hive_str in self.registry_cleaning_paths:
                 try:
                     # Convert hive for reg.exe
-                    if hive == winreg.HKEY_CURRENT_USER:
+                    if hive_str == 'HKEY_CURRENT_USER':
                         reg_hive = "HKCU"
+                        hive = winreg.HKEY_CURRENT_USER
                     else:
-                        continue  # Skip other hives
+                        continue # Add other hives later if needed
                     
                     # Try reg.exe deletion
                     cmd = ['reg', 'delete', f"{reg_hive}\\{key_path}", '/f']

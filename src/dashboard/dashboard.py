@@ -53,10 +53,11 @@ class MidnightSpooferGUI:
         self.last_spoof_time = None
         
         self.toggle_states = {
+            "MAC SPOOFING": False,
+            "GUID SPOOFING": False,
             "HWID SPOOFER": False,
             "EFI SPOOFER": False,
             "RESET TPM": False,
-            "NEW MAC": False,
             "ENABLE VPN": False
         }
         # Stored MAC selection (deferred until Start Spoofing)
@@ -151,7 +152,7 @@ class MidnightSpooferGUI:
         refresh_hw_btn = ctk.CTkButton(
             logo_frame,
             text="🔄",
-            command=self.refresh_hardware_info,
+            command=self.refresh_all_info,
             width=40,
             height=40,
             fg_color="#2d1152",
@@ -309,42 +310,32 @@ class MidnightSpooferGUI:
         )
         spoofing_title.pack(anchor="w", padx=20, pady=(20, 15))
         
-        # Container para o conteúdo
-        spoofing_content = ctk.CTkFrame(self.spoofing_frame, fg_color="transparent")
-        spoofing_content.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        # Substituir o frame atual por CTkTabview
+        self.tabview = ctk.CTkTabview(
+            self.spoofing_frame,
+            fg_color="#1a1a2e",
+            segmented_button_fg_color="#1a1a2e",
+            segmented_button_selected_color="#6b21ff",
+            segmented_button_selected_hover_color="#4a1c6d",
+            segmented_button_unselected_color="#2d1152",
+            segmented_button_unselected_hover_color="#4a1c6d",
+            text_color="#ffffff"
+        )
+        self.tabview.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # Criar abas
+        self.hardware_tab = self.tabview.add("HARDWARE")
+        self.software_tab = self.tabview.add("SOFTWARE")
+
+        # Configurar cada aba
+        self.setup_hardware_tab()
+        self.setup_software_tab()
         
-        # Obtém dados do hardware
-        hw_data = self.controller.hw_reader.get_formatted_hardware_data(self.controller.mac_spoofer)
+        # Conectar o evento de mudança de aba
+        self.tabview.configure(command=self.on_tab_change)
         
-        # Mapeamento dos dados de hardware
-        hardware_data = [
-            ("Disk C:", hw_data.get('disk_c', 'N/A')),
-            ("Disk D:", hw_data.get('disk_d', 'N/A')),
-            ("Motherboard:", hw_data.get('motherboard', 'N/A')),
-            ("Chassis:", hw_data.get('chassis', 'N/A')),
-            ("Bios:", hw_data.get('bios', 'N/A')),
-            ("Cpu:", hw_data.get('cpu', 'N/A')),
-            ("Mac:", hw_data.get('mac', 'N/A')),
-            ("Smbios UUID:", hw_data.get('smbios_uuid', 'N/A'))
-        ]
-        
-        self.hardware_labels = {}
-        for label_text, value in hardware_data:
-            frame = ctk.CTkFrame(spoofing_content, fg_color="transparent")
-            frame.pack(fill="x", pady=2)
-            
-            label = ctk.CTkLabel(frame, text=label_text, text_color="#b0b0ff",
-                               font=ctk.CTkFont(size=11))
-            label.pack(side="left")
-            
-            # Trunca valores muito longos para caber na interface
-            display_value = value if len(str(value)) <= 25 else str(value)[:22] + "..."
-            
-            value_label = ctk.CTkLabel(frame, text=display_value, text_color="#ffffff",
-                                     font=ctk.CTkFont(size=11, weight="bold"))
-            value_label.pack(side="left", padx=(5, 0))
-            
-            self.hardware_labels[label_text] = value_label
+        # Initial refresh to populate tabs
+        self.refresh_all_info()
 
     def setup_controls(self):
         """Configura a seção direita - Controls"""
@@ -372,10 +363,11 @@ class MidnightSpooferGUI:
         controls_content.pack(fill="both", expand=True, padx=20, pady=(0, 20))
         
         toggle_options = [
+            "MAC SPOOFING",
+            "GUID SPOOFING", 
             "HWID SPOOFER",
-            "EFI SPOOFER", 
+            "EFI SPOOFER",
             "RESET TPM",
-            "NEW MAC",
             "ENABLE VPN"
         ]
         
@@ -390,18 +382,23 @@ class MidnightSpooferGUI:
         dry_chk = ctk.CTkCheckBox(dry_frame, text="Dry-run (do not apply registry changes)", variable=self.dry_run_var)
         dry_chk.pack(anchor="w")
 
-    def refresh_hardware_info(self):
-        """Atualiza as informações de hardware na interface"""
+    def refresh_all_info(self):
+        """Atualiza as informações de hardware e software na interface"""
         if not self.controller.hw_reader:
             logger.log_error("Hardware reader not available", "HARDWARE")
             self.show_toast("Hardware reader unavailable", "error")
             return
         
         try:
-            logger.log_info("Refreshing hardware information...", "HARDWARE")
+            logger.log_info("Refreshing hardware and software information...", "SYSTEM")
+            
+            # Dados de hardware (existente)
             hw_data = self.controller.hw_reader.get_formatted_hardware_data(self.controller.mac_spoofer)
             
-            # Atualiza os labels
+            # NOVO: Dados de software
+            sw_data = self.controller.hw_reader.get_software_identifiers()
+            
+            # Atualizar aba Hardware
             hardware_mapping = {
                 "Disk C:": hw_data.get('disk_c', 'N/A'),
                 "Disk D:": hw_data.get('disk_d', 'N/A'),
@@ -412,18 +409,94 @@ class MidnightSpooferGUI:
                 "Mac:": hw_data.get('mac', 'N/A'),
                 "Smbios UUID:": hw_data.get('smbios_uuid', 'N/A')
             }
+            self.update_hardware_tab(hardware_mapping)
             
-            for key, value in hardware_mapping.items():
-                if key in self.hardware_labels:
-                    display_value = value if len(str(value)) <= 25 else str(value)[:22] + "..."
-                    self.hardware_labels[key].configure(text=display_value)
+            # Atualizar aba Software
+            software_mapping = {
+                "Machine GUID:": sw_data.get('machine_guid', 'N/A'),
+                "Product ID:": sw_data.get('product_id', 'N/A'),
+                "Rockstar GUID:": sw_data.get('rockstar_guid', 'N/A'),
+                "FiveM GUID:": sw_data.get('fivem_guid', 'N/A'),
+                "Windows Activation:": sw_data.get('windows_activation', 'N/A'),
+                "Installation ID:": sw_data.get('installation_id', 'N/A')
+            }
+            self.update_software_tab(software_mapping)
             
-            logger.log_success("Hardware info refreshed successfully", "HARDWARE")
-            self.show_toast("Hardware info updated", "success")
+            logger.log_success("Hardware and software info refreshed", "SYSTEM")
+            self.show_toast("Information updated", "success")
             
         except Exception as e:
-            logger.log_error(f"Failed to refresh hardware: {str(e)}", "HARDWARE")
-            self.show_toast("Hardware refresh failed", "error")
+            logger.log_error(f"Refresh failed: {str(e)}", "ERROR")
+            self.show_toast("Refresh failed", "error")
+
+    def setup_hardware_tab(self):
+        """Configura o conteúdo da aba HARDWARE."""
+        # Container para o conteúdo da aba Hardware
+        hardware_content_frame = ctk.CTkFrame(self.hardware_tab, fg_color="transparent")
+        hardware_content_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        self.hardware_labels = {}
+        hardware_data_template = [
+            "Disk C:", "Disk D:", "Motherboard:", "Chassis:", "Bios:", "Cpu:", "Mac:", "Smbios UUID:"
+        ]
+        
+        for label_text in hardware_data_template:
+            frame = ctk.CTkFrame(hardware_content_frame, fg_color="transparent")
+            frame.pack(fill="x", pady=2)
+            
+            label = ctk.CTkLabel(frame, text=label_text, text_color="#b0b0ff",
+                               font=ctk.CTkFont(size=11))
+            label.pack(side="left")
+            
+            value_label = ctk.CTkLabel(frame, text="N/A", text_color="#ffffff",
+                                     font=ctk.CTkFont(size=11, weight="bold"))
+            value_label.pack(side="left", padx=(5, 0))
+            
+            self.hardware_labels[label_text] = value_label
+        
+    def setup_software_tab(self):
+        """Configura o conteúdo da aba SOFTWARE."""
+        # Container para o conteúdo da aba Software
+        software_content_frame = ctk.CTkFrame(self.software_tab, fg_color="transparent")
+        software_content_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        self.software_labels = {}
+        software_data_template = [
+            "Machine GUID:", "Product ID:", "Rockstar GUID:", "FiveM GUID:", "Windows Activation:", "Installation ID:"
+        ]
+        
+        for label_text in software_data_template:
+            frame = ctk.CTkFrame(software_content_frame, fg_color="transparent")
+            frame.pack(fill="x", pady=2)
+            
+            label = ctk.CTkLabel(frame, text=label_text, text_color="#b0b0ff",
+                               font=ctk.CTkFont(size=11))
+            label.pack(side="left")
+            
+            value_label = ctk.CTkLabel(frame, text="N/A", text_color="#ffffff",
+                                     font=ctk.CTkFont(size=11, weight="bold"))
+            value_label.pack(side="left", padx=(5, 0))
+            
+            self.software_labels[label_text] = value_label
+
+    def update_hardware_tab(self, hardware_mapping):
+        """Atualiza os labels na aba Hardware."""
+        for key, value in hardware_mapping.items():
+            if key in self.hardware_labels:
+                display_value = value if len(str(value)) <= 25 else str(value)[:22] + "..."
+                self.hardware_labels[key].configure(text=display_value)
+
+    def update_software_tab(self, software_mapping):
+        """Atualiza os labels na aba Software."""
+        for key, value in software_mapping.items():
+            if key in self.software_labels:
+                display_value = value if len(str(value)) <= 25 else str(value)[:22] + "..."
+                self.software_labels[key].configure(text=display_value)
+
+    def on_tab_change(self):
+        """Callback when a tab is changed."""
+        tab_name = self.tabview.get()
+        logger.log_info(f"Switched to {tab_name} tab", "UI")
 
     def create_toggle_switch(self, parent, option):
         switch_frame = ctk.CTkFrame(parent, fg_color="transparent")
@@ -467,7 +540,7 @@ class MidnightSpooferGUI:
             self.show_toast(f"{option} activated", "success")
             
             # Handle specific toggles
-            if option == "NEW MAC":
+            if option == "MAC SPOOFING":
                 self.on_mac_toggle_changed()
             # Adicione outros handlers aqui para HWID, EFI, etc.
                 
@@ -475,7 +548,7 @@ class MidnightSpooferGUI:
             self.show_toast(f"{option} deactivated", "info")
             
             # Handle toggle deactivation
-            if option == "NEW MAC":
+            if option == "MAC SPOOFING":
                 self.on_mac_reset()
 
     def on_mac_toggle_changed(self):
@@ -494,8 +567,8 @@ class MidnightSpooferGUI:
             self.show_toast("MAC interface selected. Spoof will run when you Start Spoofing.", "info")
         else:
             # User cancelled, reset the toggle and clear selection
-            self.toggle_switches["NEW MAC"].deselect()
-            self.toggle_states["NEW MAC"] = False
+            self.toggle_switches["MAC SPOOFING"].deselect()
+            self.toggle_states["MAC SPOOFING"] = False
             self.selected_interface = None
             self.selected_vendor = None
             self.selected_mac = None
@@ -566,8 +639,8 @@ class MidnightSpooferGUI:
 
     def reset_mac_toggle(self):
         """Reset MAC toggle to off state"""
-        self.toggle_switches["NEW MAC"].deselect()
-        self.toggle_states["NEW MAC"] = False
+        self.toggle_switches["MAC SPOOFING"].deselect()
+        self.toggle_states["MAC SPOOFING"] = False
 
     def setup_logs_area(self, parent):
         logs_container = ctk.CTkFrame(parent, fg_color="#1a1a2e", corner_radius=15)
@@ -734,8 +807,8 @@ class MidnightSpooferGUI:
         """Callback: Ações de UI em caso de sucesso."""
         self.last_spoof_time = self.controller.last_spoof_time
         if self.controller.hw_reader:
-            logger.log_info("Refreshing hardware display after spoof...", "HARDWARE")
-            self.refresh_hardware_info()
+            logger.log_info("Refreshing hardware and software display after spoof...", "SYSTEM")
+            self.refresh_all_info()
         
         self.circular_progress.set_progress(100)
         self.update_status("Spoofing completed!", is_success=True)

@@ -12,6 +12,7 @@ import ctypes
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from utils.logger import logger
+from .mac_paths import VENDOR_OUI, MAC_REGISTRY_BASE
 
 def is_admin():
     try:
@@ -33,18 +34,8 @@ class MACSpoofer:
         self.registry = registry_checker or RegistryChecker()
         
         # Vendor OUIs para endereços MAC realistas
-        self.VENDOR_OUI = {
-            "Cisco": "00:1C:58",
-            "Dell": "00:1A:A0",
-            "HP": "00:1A:4B",
-            "Intel": "00:1B:21",
-            "Apple": "00:1D:4F",
-            "Samsung": "00:1E:7D",
-            "Microsoft": "00:1D:60",
-            "Realtek": "00:1E:68",
-            "TP-Link": "00:1D:0F",
-            "ASUS": "00:1A:92"
-        }
+        self.VENDOR_OUI = VENDOR_OUI
+        self.registry_base = MAC_REGISTRY_BASE
 
     def get_interfaces(self):
         interfaces = []
@@ -185,7 +176,7 @@ class MACSpoofer:
             # Remove chave do registro para resetar MAC
             interface_guid = self._get_interface_guid(interface_name)
             if interface_guid:
-                key_path = f"SYSTEM\\CurrentControlSet\\Control\\Class\\{{4d36e972-e325-11ce-bfc1-08002be10318}}\\{interface_guid}"
+                key_path = f"{self.registry_base}\\{interface_guid}"
                 try:
                     # Use RegistryChecker to delete the NetworkAddress value (with backup)
                     self.registry.delete_value("HKLM", key_path, "NetworkAddress", backup=True)
@@ -327,9 +318,8 @@ class MACSpoofer:
                 if guid:
                     logger.log_info(f"Found GUID via PowerShell: {guid}", "MAC")
                     # Agora procura o número correspondente no registro usando RegistryChecker
-                    base = r"SYSTEM\CurrentControlSet\Control\Class\{4d36e972-e325-11ce-bfc1-08002be10318}"
                     try:
-                        sub = self.registry.find_subkey_by_value("HKLM", base, "NetCfgInstanceId", lambda v: isinstance(v, str) and v.lower() == guid.lower())
+                        sub = self.registry.find_subkey_by_value("HKLM", self.registry_base, "NetCfgInstanceId", lambda v: isinstance(v, str) and v.lower() == guid.lower())
                         if sub:
                             logger.log_info(f"Found registry key: {sub} for GUID: {guid}", "MAC")
                             return sub
@@ -342,14 +332,13 @@ class MACSpoofer:
 
             # Método 2: Busca por DriverDesc (mais compatível)
             logger.log_info("Trying DriverDesc/NetCfgInstanceId method...", "MAC")
-            base = r"SYSTEM\CurrentControlSet\Control\Class\{4d36e972-e325-11ce-bfc1-08002be10318}"
             try:
-                subs = self.registry.enumerate_subkeys("HKLM", base)
+                subs = self.registry.enumerate_subkeys("HKLM", self.registry_base)
                 for subkey_name in subs:
                     try:
                         # Try DriverDesc
                         try:
-                            driver_desc, _ = self.registry.read_value("HKLM", os.path.join(base, subkey_name), "DriverDesc")
+                            driver_desc, _ = self.registry.read_value("HKLM", os.path.join(self.registry_base, subkey_name), "DriverDesc")
                             if driver_desc and interface_name.lower() in str(driver_desc).lower():
                                 logger.log_info(f"Found by DriverDesc: {subkey_name} - {driver_desc}", "MAC")
                                 return subkey_name
@@ -358,7 +347,7 @@ class MACSpoofer:
 
                         # Try NetCfgInstanceId
                         try:
-                            netcfg, _ = self.registry.read_value("HKLM", os.path.join(base, subkey_name), "NetCfgInstanceId")
+                            netcfg, _ = self.registry.read_value("HKLM", os.path.join(self.registry_base, subkey_name), "NetCfgInstanceId")
                             if netcfg and interface_name.lower() in str(netcfg).lower():
                                 logger.log_info(f"Found by NetCfgInstanceId: {subkey_name} - {netcfg}", "MAC")
                                 return subkey_name
@@ -372,14 +361,14 @@ class MACSpoofer:
             # Método 3: Busca por nome correspondente
             logger.log_info("Trying name matching method...", "MAC")
             try:
-                subs = self.registry.enumerate_subkeys("HKLM", base)
+                subs = self.registry.enumerate_subkeys("HKLM", self.registry_base)
                 for subkey_name in subs:
                     if not str(subkey_name).isdigit():
                         continue
                     try:
                         for value_name in ["DriverDesc", "NetCfgInstanceId", "ComponentId"]:
                             try:
-                                val, _ = self.registry.read_value("HKLM", os.path.join(base, subkey_name), value_name)
+                                val, _ = self.registry.read_value("HKLM", os.path.join(self.registry_base, subkey_name), value_name)
                                 if val and interface_name.lower() in str(val).lower():
                                     logger.log_info(f"Found by {value_name}: {subkey_name} - {val}", "MAC")
                                     return subkey_name
@@ -404,7 +393,7 @@ class MACSpoofer:
                 logger.log_error(f"Could not find registry subkey for interface {interface_name}", "MAC")
                 return False
 
-            key_path = f"SYSTEM\\CurrentControlSet\\Control\\Class\\{{4d36e972-e325-11ce-bfc1-08002be10318}}\\{interface_guid}"
+            key_path = f"{self.registry_base}\\{interface_guid}"
             logger.log_info(f"Writing NetworkAddress to registry key: {key_path}", "MAC")
             # Ensure admin
             try:

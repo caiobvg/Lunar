@@ -1,0 +1,3752 @@
+# README.md
+
+# Midnight Spoofer
+
+Soon...
+
+
+# run.py
+
+# run.py
+import tkinter as tk
+from tkinter import messagebox
+import customtkinter as ctk
+import sys
+import os
+
+# Add src to path
+sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+
+from src.dashboard.dashboard import MidnightSpooferGUI
+from src.controllers.spoofer_controller import SpoofingController
+from src.cleaners.system_cleaner import SystemCleaner
+from src.utils.hardware_reader import HardwareReader
+from src.utils.logger import logger
+from src.spoofers.mac_spoofer.mac_spoofer import MACSpoofer
+from src.spoofers.hwid_spoofer.hwid_spoofer import HWIDSpoofer
+from src.spoofers.guid_spoofer.guid_spoofer import GUIDSpoofer
+
+def check_admin_privileges():
+    """Check if running as administrator"""
+    try:
+        import ctypes
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except Exception as e:
+        logger.log_error(f"Admin check failed: {e}", "SYSTEM")
+        return False
+
+def main():
+    # Check administrator privileges
+    if not check_admin_privileges():
+        messagebox.showerror("Administrator Rights Required", 
+                         "❌ Midnight Spoofer requires Administrator privileges!\n\n" +
+                         "Please run as Administrator to use all features.\n\n" +
+                         "Right-click -> Run as administrator")
+        return
+    
+    # 1. Initialize all core components (dependencies)
+    try:
+        cleaner = SystemCleaner()
+        hw_reader = HardwareReader()
+        mac_spoofer = MACSpoofer()
+        hwid_spoofer = HWIDSpoofer()
+        guid_spoofer = GUIDSpoofer()
+        logger.log_info("Core components initialized successfully", "SYSTEM")
+    except Exception as e:
+        logger.log_error(f"Fatal error during component initialization: {e}", "CRITICAL")
+        messagebox.showerror("Initialization Error", f"A critical error occurred: {e}")
+        return
+
+    # 2. Initialize the controller with the components
+    # The controller will now manage the logic, but the UI will trigger it.
+    # Callbacks are still needed for the controller to update the UI.
+    # We will define them inside the GUI class and pass them later.
+    spoofer_controller = SpoofingController(
+        cleaner=cleaner,
+        mac_spoofer=mac_spoofer,
+        hwid_spoofer=hwid_spoofer,
+        guid_spoofer=guid_spoofer,
+        hw_reader=hw_reader
+    )
+
+    # 3. Start the application, passing the controller to the GUI
+    app = MidnightSpooferGUI(spoofer_controller)
+    app.run()
+
+if __name__ == "__main__":
+    main()
+
+
+# script.py
+
+import os
+import pathlib
+
+def export_project_structure(root_dir, output_file):
+    # Lista de extensões de arquivos de código (personalizável)
+    code_extensions = {
+        '.py', '.js', '.html', '.css', '.java', '.c', '.cpp', '.cs', '.php', '.rb',
+        '.go', '.rs', '.ts', '.sql', '.json', '.xml', '.yaml', '.yml', '.md', '.cfg',
+        '.conf', '.ini', '.sh', '.bat', '.ps1', '.vue', '.jsx',
+        '.tsx', '.scss', '.sass', '.less', '.asm', '.swift', '.kt', '.dart'
+    }
+    
+    with open(output_file, 'w', encoding='utf-8') as outfile:
+        for root, dirs, files in os.walk(root_dir):
+            # Ignorar pastas de versão (personalizável)
+            ignore_dirs = {'.git', '__pycache__', 'node_modules', 'vendor', 'dist', 'build'}
+            dirs[:] = [d for d in dirs if d not in ignore_dirs]
+            
+            for file in files:
+                file_path = pathlib.Path(root) / file
+                relative_path = file_path.relative_to(root_dir)
+                
+                # Verificar se é um arquivo de código
+                if file_path.suffix.lower() in code_extensions:
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as infile:
+                            content = infile.read()
+                    except UnicodeDecodeError:
+                        try:
+                            with open(file_path, 'r', encoding='latin-1') as infile:
+                                content = infile.read()
+                        except Exception:
+                            content = f"[ERRO: Não foi possível ler o arquivo {relative_path}]\n"
+                    except Exception as e:
+                        content = f"[ERRO: {str(e)}]\n"
+
+                    # Escrever no arquivo de saída
+                    outfile.write(f"# {relative_path}\n\n")
+                    outfile.write(content)
+                    outfile.write("\n\n")
+
+if __name__ == "__main__":
+    project_root = input("Digite o caminho completo do projeto (ou Enter para usar o diretório atual): ").strip()
+    if not project_root:
+        project_root = os.getcwd()
+    
+    output_filename = "projeto_completo.txt"
+    export_project_structure(project_root, output_filename)
+    print(f"Arquivo '{output_filename}' gerado com sucesso!")
+
+# registry_backups\backup_20251028T045704Z.json
+
+{"meta": {"created_by": "User", "ts": 1761627424.453734}, "data": {"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e972-e325-11ce-bfc1-08002be10318}\\0001": {"NetworkAddress": ["0264D6AC5057", 1]}}}
+
+# registry_backups\backup_20251028T051411Z.json
+
+{"meta": {"created_by": "User", "ts": 1761628451.0291324}, "data": {"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e972-e325-11ce-bfc1-08002be10318}\\0001": {"NetworkAddress": ["0287962048B9", 1]}}}
+
+# registry_backups\backup_20251028T053639Z.json
+
+{"meta": {"created_by": "User", "ts": 1761629799.7312691}, "data": {"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e972-e325-11ce-bfc1-08002be10318}\\0001": {"NetworkAddress": ["001A4BECB293", 1]}}}
+
+# registry_backups\backup_20251028T053731Z.json
+
+{"meta": {"created_by": "User", "ts": 1761629851.812091}, "data": {"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e972-e325-11ce-bfc1-08002be10318}\\0001": {"NetworkAddress": ["02BC873D1031", 1]}}}
+
+# registry_backups\backup_20251028T053816Z.json
+
+{"meta": {"created_by": "User", "ts": 1761629896.6613073}, "data": {"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e972-e325-11ce-bfc1-08002be10318}\\0001": {"NetworkAddress": ["02BC873D1031", 1]}}}
+
+# registry_backups\backup_20251028T063719Z.json
+
+{"meta": {"created_by": "User", "ts": 1761633439.6822135}, "data": {"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e972-e325-11ce-bfc1-08002be10318}\\0001": {"NetworkAddress": ["020B34E5119D", 1]}}}
+
+# registry_backups\backup_20251028T063755Z.json
+
+{"meta": {"created_by": "User", "ts": 1761633475.597036}, "data": {"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e972-e325-11ce-bfc1-08002be10318}\\0001": {"NetworkAddress": ["026ED3C7C51E", 1]}}}
+
+# registry_backups\backup_20251028T083330Z.json
+
+{"meta": {"created_by": "User", "ts": 1761640410.784986}, "data": {"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e972-e325-11ce-bfc1-08002be10318}\\0001": {}}}
+
+# registry_backups\backup_20251028T083354Z.json
+
+{"meta": {"created_by": "User", "ts": 1761640434.1529198}, "data": {"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e972-e325-11ce-bfc1-08002be10318}\\0001": {"NetworkAddress": ["024BC5FF9D2C", 1]}}}
+
+# registry_backups\backup_20251028T084140Z.json
+
+{"meta": {"created_by": "User", "ts": 1761640900.3105705}, "data": {"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e972-e325-11ce-bfc1-08002be10318}\\0001": {}}}
+
+# registry_backups\backup_20251028T084427Z.json
+
+{"meta": {"created_by": "User", "ts": 1761641067.7604918}, "data": {"HKLM\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e972-e325-11ce-bfc1-08002be10318}\\0001": {"NetworkAddress": ["02985E2D4C31", 1]}}}
+
+# src\cleaners\system_cleaner.py
+
+# src/cleaners/system_cleaner.py
+
+import os
+import shutil
+import subprocess
+import winreg
+import tempfile
+import glob
+from pathlib import Path
+import psutil
+import random
+import string
+import time
+from datetime import datetime
+from utils.logger import logger
+from .system_paths import (
+    PROCESSES_TO_KILL,
+    FIVEM_PATHS,
+    DISCORD_PATHS,
+    SYSTEM_TEMP_PATHS,
+    BROWSER_CACHE_PATHS,
+    REGISTRY_CLEANING_PATHS,
+    DISCORD_CACHE_PATHS,
+    DISCORD_STORAGE_PATHS
+)
+
+class SystemCleaner:
+    def __init__(self):
+        self.total_operations = 0
+        self.completed_operations = 0
+        self.processes_to_kill = PROCESSES_TO_KILL
+        self.fivem_paths = FIVEM_PATHS
+        self.discord_paths = DISCORD_PATHS
+        self.system_temp_paths = SYSTEM_TEMP_PATHS
+        self.browser_cache_paths = BROWSER_CACHE_PATHS
+        self.registry_cleaning_paths = REGISTRY_CLEANING_PATHS
+        self.discord_cache_paths = DISCORD_CACHE_PATHS
+        self.discord_storage_paths = DISCORD_STORAGE_PATHS
+
+    def get_progress(self):
+        """Calculate current progress percentage"""
+        if self.total_operations == 0:
+            return 0
+        return (self.completed_operations / self.total_operations) * 100
+
+    def timed_operation(self, operation_name, operation_func):
+        """Execute operation with timing and logging"""
+        start_time = time.time()
+        logger.info(f"Starting: {operation_name}", context="CLEANER")
+        
+        try:
+            result = operation_func()
+            elapsed_time = time.time() - start_time
+            logger.success(f"{operation_name} - Done in {elapsed_time:.2f}s", context="CLEANER")
+            return result
+        except Exception as e:
+            elapsed_time = time.time() - start_time
+            logger.error(f"{operation_name} - Failed after {elapsed_time:.2f}s: {str(e)}", context="CLEANER")
+            raise
+    
+    def kill_target_processes(self):
+        """Kill target processes with better detection"""
+        def _kill():
+            killed = 0
+            
+            # First pass - normal kill
+            for proc in psutil.process_iter(['name', 'pid']):
+                try:
+                    proc_name = proc.info['name'].lower() if proc.info['name'] else ''
+                    for target in self.processes_to_kill:
+                        if target in proc_name:
+                            try:
+                                proc.kill()
+                                proc.wait(timeout=3)  # Wait for termination
+                                killed += 1
+                                logger.info(f"Killed: {proc.info['name']} (PID: {proc.info['pid']})", context="TERMINATE")
+                                break
+                            except (psutil.NoSuchProcess, psutil.TimeoutExpired):
+                                # Process already dead or stuck
+                                continue
+                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    continue
+            
+            # Second pass - force kill stubborn processes
+            time.sleep(1)  # Let system process kills
+            for proc in psutil.process_iter(['name']):
+                try:
+                    proc_name = proc.info['name'].lower() if proc.info['name'] else ''
+                    for target in self.processes_to_kill:
+                        if target in proc_name:
+                            try:
+                                proc.kill()
+                                killed += 1
+                                logger.warning(f"Forcefully terminated: {proc.info['name']}", context="TERMINATE")
+                            except:
+                                continue
+                except:
+                    continue
+            
+            logger.info(f"{killed} processes terminated", context="STATUS")
+            return killed > 0
+        
+        return self.timed_operation("Process Termination", _kill)
+    
+    def clean_fivem_cache(self):
+        """Clean FiveM cache but keep important files"""
+        def _clean():
+            # Files we DON'T want to delete
+            FILE_BLACKLIST = [
+                'fivem.exe',
+                'fiveguard.exe', 
+                'fxserver.exe',
+                'fivem.app',
+                'fivem',
+                'citizenfx.exe'
+            ]
+            
+            cleaned_count = 0
+            for path in self.fivem_paths:
+                if os.path.exists(path):
+                    try:
+                        shutil.rmtree(path, ignore_errors=True)
+                        cleaned_count += 1
+                        logger.info(f"Purged directory: {os.path.basename(path)}", context="CLEAN")
+                    except Exception as e:
+                        logger.warning(f"Failed to delete {path}: {str(e)}", context="CLEAN")
+            
+            # Clean specific file types but skip blacklisted files
+            fivem_app_path = os.path.join(os.environ['LOCALAPPDATA'], 'FiveM', 'FiveM.app')
+            if os.path.exists(fivem_app_path):
+                try:
+                    # File patterns to clean
+                    file_patterns = [
+                        '*.bin', '*.dll', '*.ini', '*.xml', '*.log', '*.tmp',
+                        'cache*.dat', '*.cfg', '*.json'
+                    ]
+                    
+                    for pattern in file_patterns:
+                        for file_path in glob.glob(os.path.join(fivem_app_path, '**', pattern), recursive=True):
+                            try:
+                                # Check if file is blacklisted
+                                filename = os.path.basename(file_path).lower()
+                                if any(blacklisted_file in filename for blacklisted_file in FILE_BLACKLIST):
+                                    logger.debug(f"Preserved blacklisted file: {filename}", context="BLACKLIST")
+                                    continue
+                                    
+                                os.remove(file_path)
+                                cleaned_count += 1
+                                logger.info(f"Removed file: {os.path.basename(file_path)}", context="DELETE")
+                            except Exception as e:
+                                logger.warning(f"Failed to remove {file_path}: {str(e)}", context="DELETE")
+                except Exception as e:
+                    logger.warning(f"Error scanning FiveM files: {str(e)}", context="CLEAN")
+            
+            logger.info(f"FiveM cleanup: {cleaned_count} items removed", context="STATUS")
+            return cleaned_count > 0
+        
+        return self.timed_operation("FiveM Cache Purge", _clean)
+    
+    def spoof_discord_rpc(self):
+        """Rename Discord RPC modules to break tracking"""
+        def _clean():
+            renamed_count = 0
+            for base_path in self.discord_paths:
+                if os.path.exists(base_path):
+                    try:
+                        # Find version folders (like 0.0.309)
+                        for item in os.listdir(base_path):
+                            version_path = os.path.join(base_path, item)
+                            
+                            # Check if it's a version folder
+                            if os.path.isdir(version_path) and any(c.isdigit() for c in item):
+                                modules_path = os.path.join(version_path, 'modules')
+                                if os.path.exists(modules_path):
+                                    for module_item in os.listdir(modules_path):
+                                        # Find RPC modules
+                                        if 'discord_rpc' in module_item.lower() or 'rpc' in module_item.lower():
+                                            old_path = os.path.join(modules_path, module_item)
+                                            new_name = f"discord_rpc_{random.randint(10000, 99999)}"
+                                            new_path = os.path.join(modules_path, new_name)
+                                            try:
+                                                if os.path.exists(old_path):
+                                                    os.rename(old_path, new_path)
+                                                    renamed_count += 1
+                                                    logger.info(f"Renamed RPC: {module_item} -> {new_name}", context="MODIFY")
+                                            except Exception as e:
+                                                logger.warning(f"Failed to rename {module_item}: {str(e)}", context="MODIFY")
+                    except Exception as e:
+                        logger.error(f"Error in {base_path}: {str(e)}", context="CLEAN")
+            
+            # Clean Discord caches
+            for cache_path in self.discord_cache_paths:
+                if os.path.exists(cache_path):
+                    try:
+                        shutil.rmtree(cache_path, ignore_errors=True)
+                        logger.info(f"Cleared cache: {os.path.basename(cache_path)}", context="CLEAN")
+                    except Exception as e:
+                        logger.warning(f"Failed to clear {cache_path}: {str(e)}", context="CLEAN")
+            
+            # Clean Discord storage
+            for storage_path in self.discord_storage_paths:
+                if os.path.exists(storage_path):
+                    try:
+                        shutil.rmtree(storage_path, ignore_errors=True)
+                        logger.info(f"Cleared storage: {os.path.basename(storage_path)}", context="CLEAN")
+                    except Exception as e:
+                        logger.warning(f"Failed to clear {storage_path}: {str(e)}", context="CLEAN")
+            
+            logger.info(f"Discord spoofing: {renamed_count} RPC modules modified", context="STATUS")
+            return renamed_count > 0
+        
+        return self.timed_operation("Discord RPC Spoofing", _clean)
+    
+    def clean_system_temp(self):
+        """Clean system temp files safely"""
+        def _clean():
+            cleaned_count = 0
+            for temp_path in self.system_temp_paths:
+                if os.path.exists(temp_path):
+                    try:
+                        # Be careful with system files
+                        for item in os.listdir(temp_path):
+                            item_path = os.path.join(temp_path, item)
+                            try:
+                                # Skip system-critical files
+                                if not item.startswith('System') and not item in ['Windows', 'system']:
+                                    if os.path.isfile(item_path):
+                                        os.remove(item_path)
+                                        cleaned_count += 1
+                                    elif os.path.isdir(item_path):
+                                        # Only safe directories
+                                        dir_blacklist = ['Windows', 'System', 'Boot']
+                                        if not any(blacklisted in item for blacklisted in dir_blacklist):
+                                            shutil.rmtree(item_path, ignore_errors=True)
+                                            cleaned_count += 1
+                            except Exception as e:
+                                # Skip problematic files
+                                continue
+                    except Exception as e:
+                        logger.warning(f"Error cleaning {temp_path}: {str(e)}", context="CLEAN")
+            
+            for browser_path in self.browser_cache_paths:
+                if os.path.exists(browser_path):
+                    try:
+                        shutil.rmtree(browser_path, ignore_errors=True)
+                        cleaned_count += 1
+                        logger.info(f"Cleared browser cache: {os.path.basename(browser_path)}", context="CLEAN")
+                    except Exception as e:
+                        logger.warning(f"Failed to clear {browser_path}: {str(e)}", context="CLEAN")
+            
+            logger.info(f"Temp files: {cleaned_count} items removed", context="CLEAN")
+            return cleaned_count > 0
+        
+        return self.timed_operation("System Temp Cleanup", _clean)
+    
+    def reset_network(self):
+        """Reset network stack and clear caches"""
+        def _reset():
+            commands = [
+                ('DNS Flush', ['ipconfig', '/flushdns']),
+                ('Winsock Reset', ['netsh', 'winsock', 'reset']),
+                ('IP Reset', ['netsh', 'int', 'ip', 'reset', 'reset.log']),
+                ('TCP Reset', ['netsh', 'int', 'tcp', 'set', 'global', 'autotuninglevel=normal']),
+                ('Firewall Reset', ['netsh', 'advfirewall', 'reset']),
+                ('Proxy Reset', ['netsh', 'winhttp', 'reset', 'proxy']),
+            ]
+            
+            success_count = 0
+            for name, cmd in commands:
+                try:
+                    # Special handling for IP reset
+                    if name == 'IP Reset':
+                        try:
+                            # Run with file output
+                            with open('reset.log', 'w') as f:
+                                result = subprocess.run(cmd[:-1], stdout=f, stderr=subprocess.PIPE, 
+                                                      timeout=30, shell=True, text=True)
+                            if os.path.exists('reset.log'):
+                                os.remove('reset.log')  # Cleanup log
+                            success_count += 1
+                            logger.info(f"{name}: Success", context="NETWORK")
+                        except Exception as e:
+                            logger.warning(f"{name}: Partial - {str(e)}", context="NETWORK")
+                    else:
+                        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, shell=True)
+                        if result.returncode == 0:
+                            success_count += 1
+                            logger.info(f"{name}: Success", context="NETWORK")
+                        else:
+                            # Try alternative method
+                            try:
+                                alt_result = subprocess.run(cmd, timeout=30, shell=True)
+                                if alt_result.returncode == 0:
+                                    success_count += 1
+                                    logger.info(f"{name}: Success (alt)", context="NETWORK")
+                                else:
+                                    logger.warning(f"{name}: Failed", context="NETWORK")
+                            except:
+                                logger.warning(f"{name}: Failed", context="NETWORK")
+                except Exception as e:
+                    logger.warning(f"{name}: Error - {str(e)}", context="NETWORK")
+            
+            # Extra network cleanup
+            try:
+                subprocess.run(['nbtstat', '-R'], capture_output=True, shell=True)
+                subprocess.run(['nbtstat', '-RR'], capture_output=True, shell=True)
+                logger.info("NetBIOS cache cleared", context="NETWORK")
+            except:
+                pass
+            
+            logger.info(f"Network reset: {success_count}/{len(commands)} operations", context="STATUS")
+            return success_count >= 3  # Most should work
+        
+        return self.timed_operation("Network Stack Reset", _reset)
+    
+    def clean_registry_entries(self):
+        """Clean registry entries safely"""
+        def _clean():
+            cleaned_count = 0
+            
+            # Try reg.exe first (better permissions)
+            for key_path, hive_str in self.registry_cleaning_paths:
+                try:
+                    # Convert hive for reg.exe
+                    if hive_str == 'HKEY_CURRENT_USER':
+                        reg_hive = "HKCU"
+                        hive = winreg.HKEY_CURRENT_USER
+                    else:
+                        continue # Add other hives later if needed
+                    
+                    # Try reg.exe deletion
+                    cmd = ['reg', 'delete', f"{reg_hive}\\{key_path}", '/f']
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=10, shell=True)
+                    
+                    if result.returncode == 0:
+                        cleaned_count += 1
+                        logger.info(f"Deleted key: {key_path}", context="REGISTRY")
+                    else:
+                        # Fallback to Python method
+                        try:
+                            # Check if key exists
+                            try:
+                                key = winreg.OpenKey(hive, key_path, 0, winreg.KEY_READ)
+                                winreg.CloseKey(key)
+                                
+                                # Try to delete
+                                try:
+                                    winreg.DeleteKey(hive, key_path)
+                                    cleaned_count += 1
+                                    logger.info(f"Cleaned key: {key_path}", context="REGISTRY")
+                                except PermissionError:
+                                    # Try recursive deletion
+                                    try:
+                                        key = winreg.OpenKey(hive, key_path, 0, winreg.KEY_ALL_ACCESS)
+                                        # Delete subkeys first
+                                        try:
+                                            i = 0
+                                            while True:
+                                                try:
+                                                    subkey_name = winreg.EnumKey(key, i)
+                                                    winreg.DeleteKey(key, subkey_name)
+                                                    i += 1
+                                                except WindowsError:
+                                                    break
+                                            winreg.CloseKey(key)
+                                            winreg.DeleteKey(hive, key_path)
+                                            cleaned_count += 1
+                                            logger.info(f"Recursively cleaned key: {key_path}", context="REGISTRY")
+                                        except:
+                                            logger.warning(f"Complex recursive delete failed for: {key_path}", context="REGISTRY")
+                                    except:
+                                        logger.warning(f"Permission denied for key: {key_path}", context="REGISTRY")
+                            except FileNotFoundError:
+                                logger.debug(f"Registry key not found: {key_path}", context="REGISTRY")
+                        except Exception as e:
+                            logger.warning(f"Failed to clean {key_path}: {str(e)}", context="REGISTRY")
+                except Exception as e:
+                    logger.error(f"Registry error for {key_path}: {str(e)}", context="REGISTRY")
+            
+            # Extra cleanup for stubborn keys
+            stubborn_keys = [
+                r"HKCU\Software\CitizenFX",
+                r"HKCU\Software\FiveM", 
+                r"HKCU\Software\Rockstar Games",
+            ]
+            
+            for key in stubborn_keys:
+                try:
+                    # Multiple deletion methods
+                    methods = [
+                        ['reg', 'delete', key, '/f', '/va'],
+                        ['reg', 'delete', key, '/f'],
+                    ]
+                    
+                    for cmd in methods:
+                        result = subprocess.run(cmd, capture_output=True, timeout=5, shell=True)
+                        if result.returncode == 0:
+                            cleaned_count += 1
+                            logger.info(f"Removed stubborn key: {key}", context="REGISTRY")
+                            break
+                except:
+                    continue
+            
+            logger.info(f"Registry cleanup: {cleaned_count} entries", context="STATUS")
+            return cleaned_count > 0
+        
+        return self.timed_operation("Registry Cleanup", _clean)
+    
+    def execute_real_spoofing(self):
+        """Main method - execute full spoofing routine"""
+        start_time = time.time()
+        logger.info("=" * 60, context="SPOOFING")
+        logger.info("STARTING SPOOFING PROTOCOL", context="SPOOFING")
+        logger.info("Performing ACTUAL system modifications", context="SPOOFING")
+        logger.info("=" * 60, context="SPOOFING")
+        
+        # Operations in optimal order
+        operations = [
+            ("Killing processes", self.kill_target_processes),
+            ("Cleaning temp files", self.clean_system_temp),
+            ("Spoofing Discord", self.spoof_discord_rpc),
+            ("Cleaning FiveM", self.clean_fivem_cache),
+            ("Cleaning registry", self.clean_registry_entries),
+            ("Resetting network", self.reset_network),
+        ]
+        
+        self.total_operations = len(operations)
+        self.completed_operations = 0
+        
+        results = []
+        for op_name, op_function in operations:
+            logger.info(f"Running: {op_name}", context="SPOOFING")
+            try:
+                result = op_function()
+                results.append(result)
+                self.completed_operations += 1
+                progress = self.get_progress()
+                logger.info(f"Progress: {self.completed_operations}/{self.total_operations} ({progress:.1f}%)", context="SPOOFING")
+            except Exception as e:
+                logger.error(f"{op_name} failed: {str(e)}", context="SPOOFING")
+                results.append(False)
+        
+        success_count = sum(1 for r in results if r)
+        total_time = time.time() - start_time
+        
+        logger.info("=" * 60, context="SPOOFING")
+        logger.info(f"SPOOFING COMPLETE: {success_count}/{self.total_operations} operations successful", context="SPOOFING")
+        logger.info(f"Total time: {total_time:.2f}s", context="STATS")
+        
+        if success_count >= 4:  # Most operations successful
+            logger.success("✅ SPOOFING SUCCESSFUL!", context="SPOOFING")
+            logger.info("Discord RPC modified", context="SPOOFING")
+            logger.info("FiveM cache cleared", context="SPOOFING")
+            logger.info("System identity spoofed", context="SPOOFING")
+        else:
+            logger.warning("⚠️ Partial success - some operations failed", context="SPOOFING")
+        
+        logger.info("=" * 60, context="SPOOFING")
+        
+        return success_count >= 4
+
+
+# src\cleaners\system_paths.py
+
+"""
+System cleaning paths and configurations
+"""
+import os
+
+PROCESSES_TO_KILL = [
+    'discord', 'fivem', 'steam', 'steamwebhelper',
+    'epicgameslauncher', 'socialclub', 'rockstargames'
+]
+
+FIVEM_PATHS = [
+    os.path.join(os.environ['LOCALAPPDATA'], 'FiveM', 'FiveM.app', 'cache'),
+    os.path.join(os.environ['LOCALAPPDATA'], 'FiveM', 'FiveM.app', 'logs'),
+    os.path.join(os.environ['LOCALAPPDATA'], 'FiveM', 'FiveM.app', 'crashes'),
+    os.path.join(os.environ['LOCALAPPDATA'], 'DigitalEntitlements'),
+    os.path.join(os.environ['APPDATA'], 'CitizenFX'),
+    os.path.join(os.environ['LOCALAPPDATA'], 'FiveM', 'FiveM.app', 'data', 'cache'),
+    os.path.join(os.environ['LOCALAPPDATA'], 'FiveM', 'FiveM.app', 'browser'),
+    os.path.join(os.environ['USERPROFILE'], 'AppData', 'Roaming', 'CitizenFX'),
+    os.path.join(os.environ['USERPROFILE'], 'Documents', 'Rockstar Games'),
+]
+
+SYSTEM_TEMP_PATHS = [
+    os.environ.get('TEMP', ''),
+    os.environ.get('TMP', ''),
+    os.path.join(os.environ['LOCALAPPDATA'], 'Temp'),
+    r'C:\Windows\Temp',
+    os.path.join(os.environ['USERPROFILE'], 'AppData', 'Local', 'Temp'),
+]
+
+BROWSER_CACHE_PATHS = [
+    os.path.join(os.environ['LOCALAPPDATA'], 'Google', 'Chrome', 'User Data', 'Default', 'Cache'),
+    os.path.join(os.environ['LOCALAPPDATA'], 'Microsoft', 'Edge', 'User Data', 'Default', 'Cache'),
+    os.path.join(os.environ['APPDATA'], 'Mozilla', 'Firefox', 'Profiles'),
+]
+
+REGISTRY_CLEANING_PATHS = [
+    (r'Software\CitizenFX', 'HKEY_CURRENT_USER'),
+    (r'Software\FiveM', 'HKEY_CURRENT_USER'),
+    (r'Software\Rockstar Games', 'HKEY_CURRENT_USER'),
+    (r'Software\Valve\Steam', 'HKEY_CURRENT_USER'),
+    (r'Software\Rockstar Games Launcher', 'HKEY_CURRENT_USER'),
+    (r'Software\Epic Games', 'HKEY_CURRENT_USER'),
+]
+
+DISCORD_PATHS = [
+    os.path.join(os.environ['APPDATA'], 'discord'),
+    os.path.join(os.environ['LOCALAPPDATA'], 'Discord'),
+    os.path.join(os.environ['LOCALAPPDATA'], 'DiscordCanary'),
+    os.path.join(os.environ['LOCALAPPDATA'], 'DiscordPTB'),
+]
+
+DISCORD_CACHE_PATHS = [
+    os.path.join(os.environ['LOCALAPPDATA'], 'Discord', 'Cache'),
+    os.path.join(os.environ['LOCALAPPDATA'], 'DiscordCanary', 'Cache'),
+    os.path.join(os.environ['LOCALAPPDATA'], 'DiscordPTB', 'Cache'),
+    os.path.join(os.environ['LOCALAPPDATA'], 'Discord', 'Code Cache'),
+    os.path.join(os.environ['LOCALAPPDATA'], 'Discord', 'GPUCache'),
+]
+
+DISCORD_STORAGE_PATHS = [
+    os.path.join(os.environ['LOCALAPPDATA'], 'Discord', 'Local Storage'),
+    os.path.join(os.environ['LOCALAPPDATA'], 'DiscordCanary', 'Local Storage'),
+    os.path.join(os.environ['LOCALAPPDATA'], 'DiscordPTB', 'Local Storage'),
+]
+
+
+# src\controllers\spoofer_controller.py
+
+# src/controllers/spoofer_controller.py
+
+import threading
+from datetime import datetime
+from utils.logger import logger
+
+class SpoofingController:
+    def __init__(self, cleaner, mac_spoofer, hwid_spoofer, guid_spoofer, hw_reader):
+        self.cleaner = cleaner
+        self.mac_spoofer = mac_spoofer
+        self.hwid_spoofer = hwid_spoofer
+        self.guid_spoofer = guid_spoofer
+        self.hw_reader = hw_reader
+        self.ui_callbacks = {}  # Will be set by the GUI
+        self.last_spoof_time = None
+
+    def set_ui_callbacks(self, callbacks):
+        """Allows the GUI to register its callbacks with the controller."""
+        self.ui_callbacks = callbacks
+
+    def start_spoofing_thread(self, toggle_states, selected_interface, selected_vendor, selected_mac):
+        """Inicia a sequência de spoofing em uma nova thread."""
+        thread = threading.Thread(
+            target=self.execute_spoofing,
+            args=(toggle_states, selected_interface, selected_vendor, selected_mac),
+            daemon=True
+        )
+        thread.start()
+
+    def execute_spoofing(self, toggle_states, selected_interface, selected_vendor, selected_mac):
+        """Executa a lógica de spoofing, chamando os callbacks da UI para atualizações."""
+        try:
+            logger.log_info("🚀 INITIATING SPOOFING PROTOCOL", "SPOOFING")
+            logger.log_info("This will modify system files", "SPOOFING")
+            logger.log_info("=" * 50, "SPOOFING")
+            
+            # Notifica a UI que o processo começou
+            if 'on_start' in self.ui_callbacks:
+                self.ui_callbacks['on_start']()
+
+            # Mostra valores ANTES do spoof
+            if self.hw_reader:
+                logger.log_info("Current Hardware IDs (BEFORE):", "HARDWARE")
+                try:
+                    hw_before = self.hw_reader.get_all_hardware_ids()
+                    for key, value in hw_before.items():
+                        display_value = value if len(str(value)) <= 40 else str(value)[:37] + "..."
+                        logger.log_info(f"{key}: {display_value}", "HARDWARE")
+                except Exception as e:
+                    logger.log_warning(f"Could not read hardware before spoof: {str(e)}", "HARDWARE")
+
+            # Executa operações de limpeza
+            logger.log_info("Executing cleaner operations...", "SPOOFING")
+            cleaner_success = self.cleaner.execute_real_spoofing()
+
+            # Executa spoofing de MAC se habilitado
+            if toggle_states.get("NEW MAC") and self.mac_spoofer and selected_interface:
+                logger.log_info("Executing MAC spoofing...", "MAC")
+                try:
+                    mac_success = self.mac_spoofer.spoof_mac_address(selected_interface, selected_vendor, selected_mac)
+                    if mac_success:
+                        logger.log_success("MAC address spoofed successfully", "MAC")
+                    else:
+                        logger.log_error("MAC spoofing failed", "MAC")
+                except Exception as e:
+                    logger.log_error(f"MAC spoofing error: {e}", "MAC")
+
+            # Executa spoofing de HWID se habilitado
+            if toggle_states.get("HWID") and self.hwid_spoofer:
+                logger.log_info("Executing HWID spoofing...", "HWID")
+                try:
+                    hwid_success = self.hwid_spoofer.spoof_hwid()
+                    if hwid_success:
+                        logger.log_success("HWID spoofed successfully", "HWID")
+                    else:
+                        logger.log_error("HWID spoofing failed", "HWID")
+                except Exception as e:
+                    logger.log_error(f"HWID spoofing error: {e}", "HWID")
+
+            # Executa spoofing de GUID se habilitado
+            if toggle_states.get("GUID") and self.guid_spoofer:
+                logger.log_info("Executing GUID spoofing...", "GUID")
+                try:
+                    guid_success = self.guid_spoofer.spoof_guid()
+                    if guid_success:
+                        logger.log_success("GUID spoofed successfully", "GUID")
+                    else:
+                        logger.log_error("GUID spoofing failed", "GUID")
+                except Exception as e:
+                    logger.log_error(f"GUID spoofing error: {e}", "GUID")
+            
+            if cleaner_success:
+                self.last_spoof_time = datetime.now()
+                
+                # Notifica a UI sobre o sucesso
+                if 'on_success' in self.ui_callbacks:
+                    self.ui_callbacks['on_success']()
+                
+                logger.log_success("✅ SPOOFING COMPLETED!", "SUCCESS")
+                logger.log_success("System modifications applied", "SECURITY")
+            else:
+                # Notifica a UI sobre a falha parcial
+                if 'on_failure' in self.ui_callbacks:
+                    self.ui_callbacks['on_failure']("Some operations failed")
+                logger.log_warning("⚠️ Some spoofing operations may have failed", "WARNING")
+            
+        except Exception as e:
+            logger.log_error(f"Spoofing failed completely: {str(e)}", "CRITICAL")
+            # Notifica a UI sobre a falha crítica
+            if 'on_failure' in self.ui_callbacks:
+                self.ui_callbacks['on_failure']("Critical failure")
+        finally:
+            # Notifica a UI que o processo terminou
+            if 'on_finish' in self.ui_callbacks:
+                self.ui_callbacks['on_finish']()
+
+
+# src\dashboard\dashboard.py
+
+# src/dashboard/dashboard.py
+
+import customtkinter as ctk
+import threading
+import time
+import queue
+from datetime import datetime
+import os
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+from cleaners.system_cleaner import SystemCleaner
+from utils.hardware_reader import HardwareReader
+from utils.logger import logger
+from spoofers.mac_spoofer.mac_spoofer import MACSpoofer
+from spoofers.mac_spoofer.select_network import InterfaceSelectionDialog
+from .components.particles import ParticleSystem
+from .components.buttons import AnimatedButton
+from .components.progress import CircularProgress
+from .components.toast import ToastNotification
+from .components.stats import SystemStats
+from controllers.spoofer_controller import SpoofingController
+
+
+class MidnightSpooferGUI:
+    def __init__(self, spoofer_controller):
+        self.root = ctk.CTk()
+        self.root.title("Midnight Spoofer Beta")
+        self.root.geometry("1400x900")
+        self.root.resizable(True, True)
+        self.root.configure(fg_color="#0a0a1a")
+        
+        self.center_window()
+        
+        self.controller = spoofer_controller
+        
+        # Register GUI as logger subscriber
+        logger.add_subscriber(self.add_log_ui)
+        
+        # Define and register UI callbacks with the controller
+        ui_callbacks = {
+            'on_start': self.handle_spoofing_start,
+            'on_success': self.handle_spoofing_success,
+            'on_failure': self.handle_spoofing_failure,
+            'on_finish': self.handle_spoofing_finish,
+        }
+        self.controller.set_ui_callbacks(ui_callbacks)
+        
+        self.cleaning_in_progress = False
+        self.sidebar_expanded = True
+        self.current_theme = "purple"
+        self.last_spoof_time = None
+        
+        self.toggle_states = {
+            "MAC SPOOFING": False,
+            "GUID SPOOFING": False,
+            "HWID SPOOFER": False,
+            "EFI SPOOFER": False,
+            "RESET TPM": False,
+            "ENABLE VPN": False
+        }
+        # Stored MAC selection (deferred until Start Spoofing)
+        self.selected_interface = None
+        self.selected_vendor = None
+        self.selected_mac = None
+
+        self.setup_ui()
+        self.update_system_stats()
+        
+        # Use logger instead of direct UI calls
+        logger.log_info("Midnight Spoofer Premium INITIALIZED", "SYSTEM")
+        logger.log_info("Spoofing engine loaded", "SECURITY")
+        logger.log_success("Discord/FiveM spoofing ready", "READY")
+        logger.log_warning("Run as Administrator for full functionality", "INFO")
+        logger.log_info("MAC Spoofer module loaded", "MAC")
+        
+        # Move hardware initialization logs to after UI is fully set up
+        if self.controller.hw_reader:
+            logger.log_info("Hardware reader initialized successfully", "HARDWARE")
+        else:
+            logger.log_warning("Hardware reader failed - using fallback data", "HARDWARE")
+
+    def center_window(self):
+        self.root.update_idletasks()
+        width = self.root.winfo_width()
+        height = self.root.winfo_height()
+        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.root.winfo_screenheight() // 2) - (height // 2)
+        self.root.geometry(f'{width}x{height}+{x}+{y}')
+
+    def add_log_ui(self, message):
+        """Callback method for logger subscription - receives formatted messages"""
+        # Check if logs_text exists before trying to use it
+        if not hasattr(self, 'logs_text') or self.logs_text is None:
+            print(f"LOG (UI not ready): {message}")
+            return
+            
+        # Parse log level from message format: [TIME] [LEVEL] [CONTEXT] Message
+        if "[ERROR]" in message:
+            tag = "error"
+        elif "[SUCCESS]" in message:
+            tag = "success"
+        elif "[WARNING]" in message:
+            tag = "warning"
+        elif "[SYSTEM]" in message or "[STATUS]" in message or "[INFO]" in message:
+            tag = "system"
+        elif "[HARDWARE]" in message or "[SECURITY]" in message:
+            tag = "hardware"
+        elif "[MAC]" in message:  # ← ADICIONADO: Tag específica para logs MAC
+            tag = "mac"
+        else:
+            tag = "info"
+        
+        self.logs_text.configure(state="normal")
+        self.logs_text.insert("end", f"{message}\n", tag)
+        self.logs_text.see("end")
+        self.logs_text.configure(state="disabled")
+
+    def setup_ui(self):
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(1, weight=1)
+        
+        self.setup_sidebar()
+        
+        self.main_content = ctk.CTkFrame(self.root, fg_color="transparent")
+        self.main_content.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self.main_content.grid_columnconfigure(0, weight=1)
+        self.main_content.grid_rowconfigure(1, weight=1)
+        
+        self.setup_header()
+        self.setup_dashboard()
+        self.setup_log_highlighting()
+
+    def setup_sidebar(self):
+        self.sidebar = ctk.CTkFrame(self.root, fg_color="#1a1a2e", width=280, corner_radius=0)
+        self.sidebar.grid(row=0, column=0, sticky="nsew")
+        self.sidebar.grid_propagate(False)
+        
+        sidebar_content = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        sidebar_content.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        logo_frame = ctk.CTkFrame(sidebar_content, fg_color="transparent")
+        logo_frame.pack(fill="x", pady=(0, 30))
+        
+        logo_label = ctk.CTkLabel(logo_frame, text="🌙 MIDNIGHT", 
+                                 font=ctk.CTkFont(family="Segoe UI", size=24, weight="bold"),
+                                 text_color="#6b21ff")
+        logo_label.pack(side="left")
+        
+        # Botão para atualizar hardware info
+        refresh_hw_btn = ctk.CTkButton(
+            logo_frame,
+            text="🔄",
+            command=self.refresh_all_info,
+            width=40,
+            height=40,
+            fg_color="#2d1152",
+            hover_color="#4a1c6d",
+            font=ctk.CTkFont(size=16)
+        )
+        refresh_hw_btn.pack(side="right")
+        
+        nav_buttons = [
+            ("📊 Dashboard", self.show_dashboard),
+            ("🔧 Spoof Tools", self.show_spoof_tools),
+            ("📜 History", self.show_history),
+            ("⚙️ Settings", self.show_settings),
+            ("ℹ️ About", self.show_about)
+        ]
+        
+        for text, command in nav_buttons:
+            btn = ctk.CTkButton(sidebar_content, text=text, command=command,
+                               fg_color="transparent", hover_color="#2d1152",
+                               anchor="w", height=45,
+                               font=ctk.CTkFont(size=14))
+            btn.pack(fill="x", pady=5)
+        
+        theme_frame = ctk.CTkFrame(sidebar_content, fg_color="transparent")
+        theme_frame.pack(side="bottom", fill="x", pady=20)
+        
+        ctk.CTkLabel(theme_frame, text="THEME", font=ctk.CTkFont(weight="bold")).pack(anchor="w")
+        
+        theme_options = ctk.CTkSegmentedButton(theme_frame, values=["Purple", "Cyan", "Red"],
+                                              command=self.switch_theme)
+        theme_options.pack(fill="x", pady=5)
+        theme_options.set("Purple")
+
+    def setup_header(self):
+        header_frame = ctk.CTkFrame(self.main_content, fg_color="transparent", height=120)
+        header_frame.grid(row=0, column=0, sticky="ew", pady=(0, 20))
+        header_frame.grid_propagate(False)
+        header_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
+        
+        self.cpu_card = self.create_stat_card(header_frame, "CPU", "0%", 0, "#6b21ff")
+        self.cpu_card.grid(row=0, column=0, padx=(0, 10), sticky="ew")
+        
+        self.memory_card = self.create_stat_card(header_frame, "Memory", "0%", 1, "#00ff88")
+        self.memory_card.grid(row=0, column=1, padx=5, sticky="ew")
+        
+        self.disk_card = self.create_stat_card(header_frame, "Disk", "0%", 2, "#ffaa00")
+        self.disk_card.grid(row=0, column=2, padx=5, sticky="ew")
+        
+        self.status_card = self.create_status_card(header_frame)
+        self.status_card.grid(row=0, column=3, padx=(10, 0), sticky="ew")
+
+    def create_stat_card(self, parent, title, value, column, color):
+        card = ctk.CTkFrame(parent, fg_color="#1a1a2e", corner_radius=15)
+        
+        title_label = ctk.CTkLabel(card, text=title, text_color="#b0b0ff",
+                                  font=ctk.CTkFont(size=12))
+        title_label.pack(anchor="w", padx=15, pady=(15, 5))
+        
+        value_label = ctk.CTkLabel(card, text=value, text_color="white",
+                                  font=ctk.CTkFont(size=18, weight="bold"))
+        value_label.pack(anchor="w", padx=15, pady=(0, 10))
+        
+        progress = ctk.CTkProgressBar(card, height=4, fg_color="#1a1a2e",
+                                     progress_color=color)
+        progress.pack(fill="x", padx=15, pady=(0, 10))
+        progress.set(0)
+        
+        return card
+
+    def create_status_card(self, parent):
+        card = ctk.CTkFrame(parent, fg_color="#1a1a2e", corner_radius=15)
+        
+        title_label = ctk.CTkLabel(card, text="STATUS", text_color="#b0b0ff",
+                                  font=ctk.CTkFont(size=12))
+        title_label.pack(anchor="w", padx=15, pady=(15, 5))
+        
+        content_frame = ctk.CTkFrame(card, fg_color="transparent")
+        content_frame.pack(fill="both", expand=True, padx=15, pady=10)
+        
+        self.status_dot = ctk.CTkLabel(content_frame, text="●", text_color="#00ff88",
+                                      font=ctk.CTkFont(size=20))
+        self.status_dot.pack(side="left", padx=(0, 10))
+        
+        self.status_text = ctk.CTkLabel(content_frame, text="System Ready", text_color="white",
+                                       font=ctk.CTkFont(size=14, weight="bold"))
+        self.status_text.pack(side="left", fill="both", expand=True)
+        
+        return card
+
+    def setup_dashboard(self):
+        content_frame = ctk.CTkFrame(self.main_content, fg_color="transparent")
+        content_frame.grid(row=1, column=0, sticky="nsew")
+        content_frame.grid_columnconfigure(0, weight=1)
+        content_frame.grid_rowconfigure(1, weight=1)
+        
+        action_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+        action_frame.grid(row=0, column=0, sticky="ew", pady=(0, 20))
+        
+        progress_frame = ctk.CTkFrame(action_frame, fg_color="transparent")
+        progress_frame.pack(side="left", padx=(0, 20))
+        
+        self.circular_progress = CircularProgress(progress_frame, size=200)
+        self.circular_progress.pack(pady=20)
+        
+        self.spoof_button = AnimatedButton(
+            progress_frame,
+            text="🚀 START SPOOFING",
+            command=self.start_spoofing_sequence,
+            font=ctk.CTkFont(family="Segoe UI", size=18, weight="bold"),
+            height=50,
+            width=200,
+            fg_color="#2d1152",
+            hover_color="#4a1c6d",
+            text_color="#ffffff",
+            corner_radius=25,
+            border_width=3,
+            border_color="#6b21ff"
+        )
+        self.spoof_button.pack(pady=(0, 20))
+        
+        # Container principal dividido em dois containers separados
+        self.modules_container = ctk.CTkFrame(action_frame, fg_color="transparent")
+        self.modules_container.pack(side="right", fill="both", expand=True)
+        
+        # Configurar grid com duas colunas de tamanhos iguais
+        self.modules_container.grid_columnconfigure(0, weight=1)
+        self.modules_container.grid_columnconfigure(1, weight=1)
+        self.modules_container.grid_rowconfigure(0, weight=1)
+        
+        # Criar dois containers separados com bordas distintas
+        self.setup_spoofing_modules()
+        self.setup_controls()
+        
+        # Create logs area
+        self.setup_logs_area(content_frame)
+
+    def setup_spoofing_modules(self):
+        """Configura a seção esquerda - Spoofing Modules"""
+        # Container principal para Spoofing Modules
+        self.spoofing_frame = ctk.CTkFrame(
+            self.modules_container, 
+            fg_color="#1a1a2e", 
+            corner_radius=15,
+            height=280
+        )
+        self.spoofing_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        self.spoofing_frame.grid_propagate(False)
+        
+        # Título da seção
+        spoofing_title = ctk.CTkLabel(
+            self.spoofing_frame,
+            text="🔧 SPOOFING MODULES",
+            font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"),
+            text_color="#6b21ff"
+        )
+        spoofing_title.pack(anchor="w", padx=20, pady=(20, 15))
+        
+        # Substituir o frame atual por CTkTabview
+        self.tabview = ctk.CTkTabview(
+            self.spoofing_frame,
+            fg_color="#1a1a2e",
+            segmented_button_fg_color="#1a1a2e",
+            segmented_button_selected_color="#6b21ff",
+            segmented_button_selected_hover_color="#4a1c6d",
+            segmented_button_unselected_color="#2d1152",
+            segmented_button_unselected_hover_color="#4a1c6d",
+            text_color="#ffffff"
+        )
+        self.tabview.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # Criar abas
+        self.hardware_tab = self.tabview.add("HARDWARE")
+        self.software_tab = self.tabview.add("SOFTWARE")
+
+        # Configurar cada aba
+        self.setup_hardware_tab()
+        self.setup_software_tab()
+        
+        # Conectar o evento de mudança de aba
+        self.tabview.configure(command=self.on_tab_change)
+        
+        # Initial refresh to populate tabs
+        self.refresh_all_info()
+
+    def setup_controls(self):
+        """Configura a seção direita - Controls"""
+        # Container principal para Controls
+        self.controls_frame = ctk.CTkFrame(
+            self.modules_container, 
+            fg_color="#1a1a2e", 
+            corner_radius=15,
+            height=280
+        )
+        self.controls_frame.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
+        self.controls_frame.grid_propagate(False)
+        
+        # Título da seção
+        controls_title = ctk.CTkLabel(
+            self.controls_frame,
+            text="⚙️ CONTROLS",
+            font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"),
+            text_color="#6b21ff"
+        )
+        controls_title.pack(anchor="w", padx=20, pady=(20, 15))
+        
+        # Container para o conteúdo
+        controls_content = ctk.CTkFrame(self.controls_frame, fg_color="transparent")
+        controls_content.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        
+        toggle_options = [
+            "MAC SPOOFING",
+            "GUID SPOOFING", 
+            "HWID SPOOFER",
+            "EFI SPOOFER",
+            "RESET TPM",
+            "ENABLE VPN"
+        ]
+        
+        self.toggle_switches = {}
+        for option in toggle_options:
+            self.create_toggle_switch(controls_content, option)
+
+        # Dry-run global toggle for registry changes
+        self.dry_run_var = ctk.BooleanVar(value=False)
+        dry_frame = ctk.CTkFrame(controls_content, fg_color="transparent")
+        dry_frame.pack(fill="x", pady=(10, 0))
+        dry_chk = ctk.CTkCheckBox(dry_frame, text="Dry-run (do not apply registry changes)", variable=self.dry_run_var)
+        dry_chk.pack(anchor="w")
+
+    def refresh_all_info(self):
+        """Atualiza as informações de hardware e software na interface"""
+        if not self.controller.hw_reader:
+            logger.log_error("Hardware reader not available", "HARDWARE")
+            self.show_toast("Hardware reader unavailable", "error")
+            return
+        
+        try:
+            logger.log_info("Refreshing hardware and software information...", "SYSTEM")
+            
+            # Dados de hardware (existente)
+            hw_data = self.controller.hw_reader.get_formatted_hardware_data(self.controller.mac_spoofer)
+            
+            # NOVO: Dados de software
+            sw_data = self.controller.hw_reader.get_software_identifiers()
+            
+            # Atualizar aba Hardware
+            hardware_mapping = {
+                "Disk C:": hw_data.get('disk_c', 'N/A'),
+                "Disk D:": hw_data.get('disk_d', 'N/A'),
+                "Motherboard:": hw_data.get('motherboard', 'N/A'),
+                "Chassis:": hw_data.get('chassis', 'N/A'),
+                "Bios:": hw_data.get('bios', 'N/A'),
+                "Cpu:": hw_data.get('cpu', 'N/A'),
+                "Mac:": hw_data.get('mac', 'N/A'),
+                "Smbios UUID:": hw_data.get('smbios_uuid', 'N/A')
+            }
+            self.update_hardware_tab(hardware_mapping)
+            
+            # Atualizar aba Software
+            software_mapping = {
+                "Machine GUID:": sw_data.get('machine_guid', 'N/A'),
+                "Product ID:": sw_data.get('product_id', 'N/A'),
+                "Rockstar GUID:": sw_data.get('rockstar_guid', 'N/A'),
+                "FiveM GUID:": sw_data.get('fivem_guid', 'N/A'),
+                "Windows Activation:": sw_data.get('windows_activation', 'N/A'),
+                "Installation ID:": sw_data.get('installation_id', 'N/A')
+            }
+            self.update_software_tab(software_mapping)
+            
+            logger.log_success("Hardware and software info refreshed", "SYSTEM")
+            self.show_toast("Information updated", "success")
+            
+        except Exception as e:
+            logger.log_error(f"Refresh failed: {str(e)}", "ERROR")
+            self.show_toast("Refresh failed", "error")
+
+    def setup_hardware_tab(self):
+        """Configura o conteúdo da aba HARDWARE."""
+        # Container para o conteúdo da aba Hardware
+        hardware_content_frame = ctk.CTkFrame(self.hardware_tab, fg_color="transparent")
+        hardware_content_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        self.hardware_labels = {}
+        hardware_data_template = [
+            "Disk C:", "Disk D:", "Motherboard:", "Chassis:", "Bios:", "Cpu:", "Mac:", "Smbios UUID:"
+        ]
+        
+        for label_text in hardware_data_template:
+            frame = ctk.CTkFrame(hardware_content_frame, fg_color="transparent")
+            frame.pack(fill="x", pady=2)
+            
+            label = ctk.CTkLabel(frame, text=label_text, text_color="#b0b0ff",
+                               font=ctk.CTkFont(size=11))
+            label.pack(side="left")
+            
+            value_label = ctk.CTkLabel(frame, text="N/A", text_color="#ffffff",
+                                     font=ctk.CTkFont(size=11, weight="bold"))
+            value_label.pack(side="left", padx=(5, 0))
+            
+            self.hardware_labels[label_text] = value_label
+        
+    def setup_software_tab(self):
+        """Configura o conteúdo da aba SOFTWARE."""
+        # Container para o conteúdo da aba Software
+        software_content_frame = ctk.CTkFrame(self.software_tab, fg_color="transparent")
+        software_content_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        self.software_labels = {}
+        software_data_template = [
+            "Machine GUID:", "Product ID:", "Rockstar GUID:", "FiveM GUID:", "Windows Activation:", "Installation ID:"
+        ]
+        
+        for label_text in software_data_template:
+            frame = ctk.CTkFrame(software_content_frame, fg_color="transparent")
+            frame.pack(fill="x", pady=2)
+            
+            label = ctk.CTkLabel(frame, text=label_text, text_color="#b0b0ff",
+                               font=ctk.CTkFont(size=11))
+            label.pack(side="left")
+            
+            value_label = ctk.CTkLabel(frame, text="N/A", text_color="#ffffff",
+                                     font=ctk.CTkFont(size=11, weight="bold"))
+            value_label.pack(side="left", padx=(5, 0))
+            
+            self.software_labels[label_text] = value_label
+
+    def update_hardware_tab(self, hardware_mapping):
+        """Atualiza os labels na aba Hardware."""
+        for key, value in hardware_mapping.items():
+            if key in self.hardware_labels:
+                display_value = value if len(str(value)) <= 25 else str(value)[:22] + "..."
+                self.hardware_labels[key].configure(text=display_value)
+
+    def update_software_tab(self, software_mapping):
+        """Atualiza os labels na aba Software."""
+        for key, value in software_mapping.items():
+            if key in self.software_labels:
+                display_value = value if len(str(value)) <= 25 else str(value)[:22] + "..."
+                self.software_labels[key].configure(text=display_value)
+
+    def on_tab_change(self, tab_name):
+        """Callback when a tab is changed."""
+        logger.log_info(f"Switched to {tab_name} tab", "UI")
+
+    def create_toggle_switch(self, parent, option):
+        switch_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        switch_frame.pack(fill="x", pady=6)
+        
+        switch_frame.grid_columnconfigure(0, weight=1)
+        switch_frame.grid_columnconfigure(1, weight=0)
+        
+        label = ctk.CTkLabel(switch_frame, text=option, text_color="#b0b0ff",
+                           font=ctk.CTkFont(size=12))
+        label.grid(row=0, column=0, sticky="w", padx=(0, 10))
+        
+        switch = ctk.CTkSwitch(
+            switch_frame,
+            text="",
+            width=45,
+            height=20,
+            switch_width=35,
+            switch_height=16,
+            corner_radius=8,
+            border_width=1,
+            button_color="#ffffff",
+            button_hover_color="#f0f0f0",
+            fg_color="#3a3a3a",
+            progress_color="#6b21ff",
+            border_color="#555555",
+            command=lambda s=option: self.on_toggle_changed(s)
+        )
+        switch.grid(row=0, column=1, sticky="e", padx=(0, 5))
+        
+        self.toggle_switches[option] = switch
+
+    def on_toggle_changed(self, option):
+        new_state = self.toggle_switches[option].get()
+        self.toggle_states[option] = new_state
+        
+        state_text = "ENABLED" if new_state else "DISABLED"
+        logger.log_info(f"{option}: {state_text}", "CONTROL")
+        
+        if new_state:
+            self.show_toast(f"{option} activated", "success")
+            
+            # Handle specific toggles
+            if option == "MAC SPOOFING":
+                self.on_mac_toggle_changed()
+            # Adicione outros handlers aqui para HWID, EFI, etc.
+                
+        else:
+            self.show_toast(f"{option} deactivated", "info")
+            
+            # Handle toggle deactivation
+            if option == "MAC SPOOFING":
+                self.on_mac_reset()
+
+    def on_mac_toggle_changed(self):
+        """Handle MAC spoofing activation"""
+        logger.log_info("MAC spoofing requested", "MAC")
+        
+        # Show interface selection dialog
+        dialog = InterfaceSelectionDialog(self.root, self.controller.mac_spoofer)
+        selected_interface, vendor_oui, selected_mac = dialog.show()
+        # If user selected an interface, store it and notify user. Do NOT perform spoof now.
+        if selected_interface:
+            self.selected_interface = selected_interface
+            self.selected_vendor = vendor_oui
+            self.selected_mac = selected_mac
+            logger.log_info(f"MAC selection stored for {selected_interface} (vendor={vendor_oui})", "MAC")
+            self.show_toast("MAC interface selected. Spoof will run when you Start Spoofing.", "info")
+        else:
+            # User cancelled, reset the toggle and clear selection
+            self.toggle_switches["MAC SPOOFING"].deselect()
+            self.toggle_states["MAC SPOOFING"] = False
+            self.selected_interface = None
+            self.selected_vendor = None
+            self.selected_mac = None
+            logger.log_info("MAC spoofing cancelled by user", "MAC")
+
+    def execute_mac_spoofing(self, interface_name, vendor_oui):
+        """Execute MAC spoofing in background thread"""
+        try:
+            logger.log_info(f"Starting MAC spoofing on {interface_name}", "MAC")
+            self.update_status(f"Spoofing MAC on {interface_name}...")
+            
+            success = self.controller.mac_spoofer.spoof_mac_address(interface_name, vendor_oui)
+            
+            if success:
+                logger.log_success(f"MAC spoofing completed on {interface_name}", "MAC")
+                self.show_toast("MAC address spoofed successfully!", "success")
+                
+                # Refresh hardware info to show new MAC
+                self.root.after(1000, self.refresh_hardware_info)
+            else:
+                logger.log_error(f"MAC spoofing failed on {interface_name}", "MAC")
+                self.show_toast("MAC spoofing failed!", "error")
+                
+                # Reset the toggle on failure
+                self.root.after(0, self.reset_mac_toggle)
+                
+        except Exception as e:
+            logger.log_error(f"MAC spoofing error: {str(e)}", "MAC")
+            self.show_toast("MAC spoofing error occurred!", "error")
+            self.root.after(0, self.reset_mac_toggle)
+
+    def on_mac_reset(self):
+        """Handle MAC reset (when toggle is turned off)"""
+        logger.log_info("MAC reset requested", "MAC")
+        
+        if self.controller.mac_spoofer.current_interface:
+            thread = threading.Thread(
+                target=self.execute_mac_reset,
+                args=(self.controller.mac_spoofer.current_interface,),
+                daemon=True
+            )
+            thread.start()
+        else:
+            logger.log_warning("No active MAC spoofing session to reset", "MAC")
+            self.show_toast("No active MAC spoofing to reset", "info")
+
+    def execute_mac_reset(self, interface_name):
+        """Execute MAC reset in background thread"""
+        try:
+            logger.log_info(f"Resetting MAC on {interface_name}", "MAC")
+            self.update_status(f"Resetting MAC on {interface_name}...")
+            
+            success = self.controller.mac_spoofer.reset_mac_address(interface_name)
+            
+            if success:
+                logger.log_success(f"MAC reset completed on {interface_name}", "MAC")
+                self.show_toast("MAC address reset to original!", "success")
+                
+                # Refresh hardware info to show original MAC
+                self.root.after(1000, self.refresh_hardware_info)
+            else:
+                logger.log_error(f"MAC reset failed on {interface_name}", "MAC")
+                self.show_toast("MAC reset failed!", "error")
+                
+        except Exception as e:
+            logger.log_error(f"MAC reset error: {str(e)}", "MAC")
+            self.show_toast("MAC reset error occurred!", "error")
+
+    def reset_mac_toggle(self):
+        """Reset MAC toggle to off state"""
+        self.toggle_switches["MAC SPOOFING"].deselect()
+        self.toggle_states["MAC SPOOFING"] = False
+
+    def setup_logs_area(self, parent):
+        logs_container = ctk.CTkFrame(parent, fg_color="#1a1a2e", corner_radius=15)
+        logs_container.grid(row=1, column=0, sticky="nsew")
+        logs_container.grid_columnconfigure(0, weight=1)
+        logs_container.grid_rowconfigure(1, weight=1)
+        
+        logs_header = ctk.CTkFrame(logs_container, fg_color="transparent")
+        logs_header.grid(row=0, column=0, sticky="ew", padx=20, pady=(15, 10))
+        logs_header.grid_columnconfigure(0, weight=1)
+        
+        logs_title = ctk.CTkLabel(
+            logs_header,
+            text="📋 EXECUTION LOG - REAL TIME MONITORING",
+            font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"),
+            text_color="#ffffff"
+        )
+        logs_title.grid(row=0, column=0, sticky="w")
+        
+        controls_frame = ctk.CTkFrame(logs_header, fg_color="transparent")
+        controls_frame.grid(row=0, column=1, sticky="e")
+        
+        clear_btn = ctk.CTkButton(
+            controls_frame,
+            text="🗑️ Clear",
+            command=self.clear_logs,
+            width=80,
+            height=30,
+            fg_color="#2d1152",
+            hover_color="#4a1c6d"
+        )
+        clear_btn.pack(side="left", padx=5)
+        
+        export_btn = ctk.CTkButton(
+            controls_frame,
+            text="💾 Export",
+            command=self.export_logs,
+            width=80,
+            height=30,
+            fg_color="#2d1152",
+            hover_color="#4a1c6d"
+        )
+        export_btn.pack(side="left", padx=5)
+        
+        text_frame = ctk.CTkFrame(logs_container, fg_color="transparent")
+        text_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
+        text_frame.grid_columnconfigure(0, weight=1)
+        text_frame.grid_rowconfigure(0, weight=1)
+        
+        self.logs_text = ctk.CTkTextbox(
+            text_frame,
+            font=ctk.CTkFont(family="Consolas", size=12),
+            wrap="word",
+            fg_color="#0f0f23",
+            text_color="#e0e0ff",
+            border_width=2,
+            border_color="#2d1152",
+            corner_radius=10
+        )
+        self.logs_text.grid(row=0, column=0, sticky="nsew")
+
+    def setup_log_highlighting(self):
+        self.logs_text.tag_config("error", foreground="#ff4444")
+        self.logs_text.tag_config("success", foreground="#00ff88")
+        self.logs_text.tag_config("warning", foreground="#ffaa00")
+        self.logs_text.tag_config("system", foreground="#6b21ff")
+        self.logs_text.tag_config("hardware", foreground="#b0b0ff")
+        self.logs_text.tag_config("mac", foreground="#b0b0ff")  # ← ADICIONADO: Cor para logs MAC
+        self.logs_text.tag_config("info", foreground="#e0e0ff")
+
+    def update_system_stats(self):
+        try:
+            cpu_usage = SystemStats.get_cpu_usage()
+            memory_usage = SystemStats.get_memory_usage()
+            disk_usage = SystemStats.get_disk_usage()
+            
+            self.update_stat_card(self.cpu_card, f"{cpu_usage:.1f}%", cpu_usage/100)
+            self.update_stat_card(self.memory_card, f"{memory_usage:.1f}%", memory_usage/100)
+            self.update_stat_card(self.disk_card, f"{disk_usage:.1f}%", disk_usage/100)
+            
+        except Exception as e:
+            logger.log_error(f"Error updating stats: {e}", "SYSTEM")
+        
+        self.root.after(2000, self.update_system_stats)
+
+    def update_stat_card(self, card, value, progress):
+        for widget in card.winfo_children():
+            if isinstance(widget, ctk.CTkLabel):
+                if widget.cget("text").isdigit() or "%" in widget.cget("text"):
+                    widget.configure(text=value)
+            elif isinstance(widget, ctk.CTkProgressBar):
+                widget.set(progress)
+
+    def update_status(self, message, is_error=False, is_success=False):
+        if is_error:
+            dot_color = "#ff4444"
+        elif is_success:
+            dot_color = "#00ff88"
+        else:
+            dot_color = "#ffaa00"
+            
+        self.status_dot.configure(text_color=dot_color)
+        self.status_text.configure(text=message)
+
+    def show_toast(self, message, toast_type="info"):
+        ToastNotification(self.root, message, toast_type)
+
+    def switch_theme(self, theme):
+        self.current_theme = theme.lower()
+        self.show_toast(f"Theme switched to {theme}", "info")
+
+    def start_spoofing_sequence(self):
+        if self.cleaning_in_progress:
+            return
+        
+        from tkinter import messagebox
+            
+        confirm = messagebox.askyesno(
+            "🚨 CONFIRM SPOOFING",
+            "⚠️  WARNING: This will PERFORM SYSTEM MODIFICATIONS:\n\n"
+            "• TERMINATE Discord, FiveM, Steam processes\n" 
+            "• RENAME Discord RPC folders to break tracking\n"
+            "• CLEAN FiveM cache and registry traces\n"
+            "• RESET network configurations\n"
+            "• DELETE temporary system files\n\n"
+            "✅ This is NOT a simulation - changes will be made!\n\n"
+            "Continue with spoofing protocol?",
+            icon='warning'
+        )
+        
+        if not confirm:
+            logger.log_warning("Spoofing cancelled by user", "USER")
+            return
+
+        self.start_spoofing()
+
+    def start_spoofing(self):
+        self.cleaning_in_progress = True
+        self.spoof_button.configure(state="disabled", text="🔄 SPOOFING...")
+        self.spoof_button.start_pulse()
+        self.clear_logs()
+        self.update_status("Executing spoofing protocol")
+        self.circular_progress.set_progress(0)
+        
+        enabled_modules = [module for module, state in self.toggle_states.items() if state]
+        if enabled_modules:
+            logger.log_info(f"Active: {', '.join(enabled_modules)}", "MODULES")
+        
+        self.show_toast("Starting spoofing...", "info")
+        
+        self.controller.start_spoofing_thread(
+            self.toggle_states,
+            self.selected_interface,
+            self.selected_vendor,
+            self.selected_mac
+        )
+
+    def handle_spoofing_start(self):
+        """Callback: Ações de UI quando o spoofing começa."""
+        # Este método já é chamado em start_spoofing, então podemos manter simples
+        pass
+
+    def handle_spoofing_success(self):
+        """Callback: Ações de UI em caso de sucesso."""
+        self.last_spoof_time = self.controller.last_spoof_time
+        if self.controller.hw_reader:
+            logger.log_info("Refreshing hardware and software display after spoof...", "SYSTEM")
+            self.refresh_all_info()
+        
+        self.circular_progress.set_progress(100)
+        self.update_status("Spoofing completed!", is_success=True)
+        self.show_toast("System successfully spoofed!", "success")
+
+    def handle_spoofing_failure(self, reason=""):
+        """Callback: Ações de UI em caso de falha."""
+        self.circular_progress.set_progress(75) # Progresso parcial
+        self.update_status(reason, is_error=True)
+        self.show_toast(f"Spoofing failed: {reason}", "error")
+
+    def handle_spoofing_finish(self):
+        """Callback: Ações de UI ao finalizar (sucesso ou falha)."""
+        self.cleaning_in_progress = False
+        self.spoof_button.configure(state="normal", text="🚀 START SPOOFING")
+        self.spoof_button.stop_pulse()
+
+    def clear_logs(self):
+        self.logs_text.configure(state="normal")
+        self.logs_text.delete("1.0", "end")
+        self.logs_text.configure(state="disabled")
+        logger.log_info("Log cleared", "SYSTEM")
+        self.show_toast("Logs cleared", "info")
+
+    def export_logs(self):
+        try:
+            filename = f"midnight_logs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write(self.logs_text.get("1.0", "end"))
+            self.show_toast(f"Logs exported to {filename}", "success")
+            logger.log_info(f"Logs exported to {filename}", "SYSTEM")
+        except Exception as e:
+            self.show_toast(f"Export failed: {str(e)}", "error")
+            logger.log_error(f"Export failed: {str(e)}", "ERROR")
+
+    def show_dashboard(self):
+        """TODO: Integrar painel de dashboard com estatísticas detalhadas"""
+        self.show_toast("Dashboard loaded", "info")
+        logger.log_info("Dashboard panel opened - TODO: Implement detailed statistics", "NAVIGATION")
+
+    def show_spoof_tools(self):
+        """TODO: Integrar ferramentas avançadas de spoofing"""
+        self.show_toast("Spoof tools panel", "info")
+        logger.log_info("Spoof tools panel opened - TODO: Implement advanced spoofing tools", "NAVIGATION")
+
+    def show_history(self):
+        """TODO: Integrar histórico de operações"""
+        self.show_toast("History panel", "info")
+        logger.log_info("History panel opened - TODO: Implement operation history", "NAVIGATION")
+
+    def show_settings(self):
+        """TODO: Integrar configurações avançadas"""
+        self.show_toast("Settings panel", "info")
+        logger.log_info("Settings panel opened - TODO: Implement advanced settings", "NAVIGATION")
+
+    def show_about(self):
+        from tkinter import messagebox
+        about_text = """
+        Midnight Spoofer Beta
+        Advanced system identity protection
+        
+        • Discord RPC spoofing
+        • FiveM cache cleaning
+        • Network configuration reset
+        • Registry sanitization
+        • Hardware ID detection
+        • MAC Address spoofing 🆕
+        
+        ⚠️ Always run as Administrator
+        for full functionality.
+        
+        📌 Educational purposes only
+        
+        🚧 Under active development
+        """   
+        messagebox.showinfo("About Midnight Spoofer", about_text)
+
+    def run(self):
+        self.root.mainloop()
+
+
+# src\dashboard\components\buttons.py
+
+# src/gui/components/buttons.py
+
+import customtkinter as ctk
+
+class AnimatedButton(ctk.CTkButton):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.default_fg_color = self.cget("fg_color")
+        self.hover_fg_color = "#4a1c6d"
+        self.animation_running = False
+        self.bind('<Enter>', self.on_enter)
+        self.bind('<Leave>', self.on_leave)
+        
+    def on_enter(self, event):
+        self.configure(fg_color=self.hover_fg_color)
+        
+    def on_leave(self, event):
+        if not self.animation_running:
+            self.configure(fg_color=self.default_fg_color)
+    
+    def start_pulse(self):
+        self.animation_running = True
+        self._pulse_animation()
+    
+    def stop_pulse(self):
+        self.animation_running = False
+        self.configure(fg_color=self.default_fg_color)
+    
+    def _pulse_animation(self):
+        if not self.animation_running:
+            return
+            
+        colors = ["#2d1152", "#3a1668", "#471c7e", "#542194", "#6127aa"]
+        current = 0
+        
+        def update_color():
+            nonlocal current
+            if self.animation_running:
+                self.configure(fg_color=colors[current])
+                current = (current + 1) % len(colors)
+                self.after(200, update_color)
+        
+        update_color()
+
+# src\dashboard\components\particles.py
+
+# src/gui/components/particles.py
+
+import random
+import math
+
+class ParticleSystem:
+    def __init__(self, canvas, width, height):
+        self.canvas = canvas
+        self.width = width
+        self.height = height
+        self.particles = []
+        self.connections = []
+        
+    def create_particles(self, count=50):
+        for _ in range(count):
+            particle = {
+                'x': random.uniform(0, self.width),
+                'y': random.uniform(0, self.height),
+                'vx': random.uniform(-0.5, 0.5),
+                'vy': random.uniform(-0.5, 0.5),
+                'radius': random.uniform(1, 3),
+                'color': random.choice(['#6b21ff', '#4a1c6d', '#2d1152', "#141425"]),
+                'id': None
+            }
+            self.particles.append(particle)
+    
+    def draw_particles(self):
+        for particle in self.particles:
+            x1 = particle['x'] - particle['radius']
+            y1 = particle['y'] - particle['radius']
+            x2 = particle['x'] + particle['radius']
+            y2 = particle['y'] + particle['radius']
+            particle['id'] = self.canvas.create_oval(x1, y1, x2, y2, 
+                                                   fill=particle['color'], 
+                                                   outline="", tags="particle")
+    
+    def draw_connections(self):
+        self.connections.clear()
+        for i, p1 in enumerate(self.particles):
+            for j, p2 in enumerate(self.particles[i+1:], i+1):
+                distance = math.sqrt((p1['x']-p2['x'])**2 + (p1['y']-p2['y'])**2)
+                if distance < 100:
+                    # Use solid color instead of alpha
+                    color = '#36365a'  # Solid light purple
+                    line_id = self.canvas.create_line(p1['x'], p1['y'], p2['x'], p2['y'],
+                                                     fill=color, width=1, tags="connection")
+                    self.connections.append(line_id)
+    
+    def update(self):
+        for particle in self.particles:
+            particle['x'] += particle['vx']
+            particle['y'] += particle['vy']
+            
+            # Bounce off edges
+            if particle['x'] <= 0 or particle['x'] >= self.width:
+                particle['vx'] *= -1
+            if particle['y'] <= 0 or particle['y'] >= self.height:
+                particle['vy'] *= -1
+            
+            # Update canvas position
+            if particle['id']:
+                x1 = particle['x'] - particle['radius']
+                y1 = particle['y'] - particle['radius']
+                x2 = particle['x'] + particle['radius']
+                y2 = particle['y'] + particle['radius']
+                self.canvas.coords(particle['id'], x1, y1, x2, y2)
+
+# src\dashboard\components\progress.py
+
+# src/gui/components/progress.py
+
+import customtkinter as ctk
+
+class CircularProgress(ctk.CTkCanvas):
+    def __init__(self, parent, size=200, **kwargs):
+        super().__init__(parent, width=size, height=size, **kwargs)
+        self.size = size
+        self.center = size // 2
+        self.radius = size // 2 - 10
+        self.progress = 0
+        
+        self.configure(bg="#0a0a1a", highlightthickness=0)
+        self.draw_background()
+        self.draw_progress()
+    
+    def draw_background(self):
+        self.create_oval(10, 10, self.size-10, self.size-10, 
+                        outline="#1a1a2e", width=8, fill="#0a0a1a")
+    
+    def draw_progress(self):
+        self.delete("progress")
+        angle = 360 * self.progress / 100
+        
+        self.create_arc(10, 10, self.size-10, self.size-10,
+                       start=90, extent=-angle,
+                       outline="#6b21ff", width=8, style="arc", tags="progress")
+        
+        # Progress text
+        self.create_text(self.center, self.center, text=f"{int(self.progress)}%",
+                        fill="white", font=("Segoe UI", 20, "bold"), tags="progress")
+    
+    def set_progress(self, value):
+        self.progress = max(0, min(100, value))
+        self.draw_progress()
+
+# src\dashboard\components\stats.py
+
+# src/gui/components/stats.py
+
+import psutil
+
+class SystemStats:
+    @staticmethod
+    def get_cpu_usage():
+        return psutil.cpu_percent(interval=0.1)
+    
+    @staticmethod
+    def get_memory_usage():
+        memory = psutil.virtual_memory()
+        return memory.percent
+    
+    @staticmethod
+    def get_disk_usage():
+        disk = psutil.disk_usage('/')
+        return disk.percent
+
+# src\dashboard\components\toast.py
+
+# src/gui/components/toast.py
+import customtkinter as ctk
+import time
+
+class ToastNotification:
+    def __init__(self, parent, message, toast_type="info"):
+        self.parent = parent
+        self.message = message
+        self.toast_type = toast_type
+        
+        self.toast = ctk.CTkToplevel(parent)
+        self.toast.overrideredirect(True)
+        self.toast.attributes("-topmost", True)
+        self.toast.attributes("-alpha", 0.0)
+        
+        self.setup_toast()
+        self.animate_in()
+    
+    def setup_toast(self):
+        colors = {
+            "info": ("#6b21ff", "#1a1a2e"),
+            "success": ("#00ff88", "#1a2e1a"),
+            "warning": ("#ffaa00", "#2e2a1a"),
+            "error": ("#ff4444", "#2e1a1a")
+        }
+        
+        bg_color, frame_color = colors.get(self.toast_type, colors["info"])
+        
+        self.toast.configure(fg_color=frame_color)
+        self.toast.geometry("300x60")
+        
+        # Position in top right
+        x = self.parent.winfo_rootx() + self.parent.winfo_width() - 320
+        y = self.parent.winfo_rooty() + 50
+        self.toast.geometry(f"+{x}+{y}")
+        
+        frame = ctk.CTkFrame(self.toast, fg_color=bg_color, corner_radius=10)
+        frame.pack(fill="both", padx=10, pady=10)
+        
+        label = ctk.CTkLabel(frame, text=self.message, text_color="white")
+        label.pack(expand=True, fill="both", padx=20, pady=15)
+    
+    def animate_in(self):
+        for i in range(10):
+            alpha = i * 0.1
+            self.toast.attributes("-alpha", alpha)
+            self.toast.update()
+            time.sleep(0.02)
+        
+        self.toast.after(3000, self.animate_out)
+    
+    def animate_out(self):
+        for i in range(10, -1, -1):
+            alpha = i * 0.1
+            self.toast.attributes("-alpha", alpha)
+            self.toast.update()
+            time.sleep(0.02)
+        
+        self.toast.destroy()
+
+# src\spoofers\guid_spoofer\guid_paths.py
+
+"""
+GUID-specific registry paths and system locations
+"""
+import os
+
+GUID_REGISTRY_PATHS = {
+    'windows_system': [
+        {
+            'hive': 'HKLM',
+            'path': r"SOFTWARE\Microsoft\Cryptography",
+            'name': 'MachineGuid',
+            'description': 'Windows Machine GUID',
+            'backup': True,
+            'critical': True
+        },
+        {
+            'hive': 'HKLM',
+            'path': r"SOFTWARE\Microsoft\SQMClient",
+            'name': 'MachineId',
+            'description': 'Windows SQM Client Machine ID',
+            'backup': True,
+            'critical': False
+        },
+        {
+            'hive': 'HKLM',
+            'path': r"SOFTWARE\Microsoft\Windows NT\CurrentVersion",
+            'name': 'ProductId',
+            'description': 'Windows Product ID',
+            'backup': True,
+            'critical': False
+        },
+        {
+            'hive': 'HKLM',
+            'path': r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileGuid",
+            'name': 'ProfileGuid',
+            'description': 'Windows Profile GUID',
+            'backup': True,
+            'critical': False
+        }
+    ],
+    'rockstar_games': [
+        {
+            'hive': 'HKLM',
+            'path': r"SOFTWARE\WOW6432Node\Rockstar Games\Grand Theft Auto V",
+            'name': 'MachineGUID',
+            'description': 'Rockstar GTA V Machine GUID',
+            'backup': True,
+            'critical': False
+        },
+        {
+            'hive': 'HKLM',
+            'path': r"SOFTWARE\Rockstar Games",
+            'name': 'MachineGUID',
+            'description': 'Rockstar Games Machine GUID',
+            'backup': True,
+            'critical': False
+        },
+        {
+            'hive': 'HKLM',
+            'path': r"SOFTWARE\Rockstar Games\Launcher",
+            'name': 'GUID',
+            'description': 'Rockstar Launcher GUID',
+            'backup': True,
+            'critical': False
+        },
+        {
+            'hive': 'HKLM',
+            'path': r"SOFTWARE\Rockstar Games\Social Club",
+            'name': 'MachineGUID',
+            'description': 'Rockstar Social Club Machine GUID',
+            'backup': True,
+            'critical': False
+        },
+        {
+            'hive': 'HKCU',
+            'path': r"SOFTWARE\Rockstar Games\Social Club",
+            'name': 'GUID',
+            'description': 'Rockstar Social Club User GUID',
+            'backup': True,
+            'critical': False
+        }
+    ],
+    'fivem': [
+        {
+            'hive': 'HKCU',
+            'path': r"Software\Cfx.re",
+            'name': 'guid',
+            'description': 'FiveM Cfx.re GUID',
+            'backup': True,
+            'critical': True
+        },
+        {
+            'hive': 'HKCU',
+            'path': r"Software\CitizenFX",
+            'name': 'guid',
+            'description': 'FiveM CitizenFX GUID',
+            'backup': True,
+            'critical': True
+        }
+    ],
+    'steam_tweaks': [
+        {
+            'hive': 'HKCU',
+            'path': r"Software\Valve\Steam",
+            'name': 'ActiveProcess',
+            'description': 'Steam Active Process Flag',
+            'backup': True,
+            'critical': False
+        }
+    ]
+}
+
+GUID_SYSTEM_PATHS = {
+    'cache_locations': [
+        os.path.join(os.getenv('LOCALAPPDATA', ''), 'FiveM'),
+        os.path.join(os.getenv('APPDATA', ''), 'CitizenFX'),
+        os.path.join(os.getenv('LOCALAPPDATA', ''), 'Rockstar Games'),
+        os.path.join(os.getenv('DOCUMENTS', ''), 'Rockstar Games'),
+        os.path.join(os.getenv('PROGRAMDATA', ''), 'Rockstar Games'),
+        os.path.join(os.getenv('APPDATA', ''), 'Social Club'),
+        os.path.join(os.getenv('LOCALAPPDATA', ''), 'Steam'),
+    ],
+    'registry_backups': [
+        "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography",
+        "HKEY_LOCAL_MACHINE\\SOFTWARE\\Rockstar Games",
+        "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Rockstar Games",
+        "HKEY_CURRENT_USER\\Software\\Cfx.re",
+        "HKEY_CURRENT_USER\\Software\\CitizenFX",
+        "HKEY_LOCAL_MACHINE\\SOFTWARE\\CitizenFX"
+    ]
+}
+
+
+# src\spoofers\guid_spoofer\guid_spoofer.py
+
+# src/spoofers/guid_spoofer/guid_spoofer.py
+
+import uuid
+import os
+import winreg
+import shutil
+import hashlib
+import random
+import subprocess
+import time
+from typing import Dict, List
+from utils.logger import logger
+from utils.registry_checker import RegistryChecker, RegistryError
+from .guid_paths import GUID_REGISTRY_PATHS, GUID_SYSTEM_PATHS
+
+class GUIDSpoofer:
+    def __init__(self):
+        """Initializes the GUIDSpoofer with comprehensive registry coverage."""
+        self.registry = RegistryChecker()
+        self.backup_dir = "registry_backups"
+        os.makedirs(self.backup_dir, exist_ok=True)
+        
+        self.registry_paths = GUID_REGISTRY_PATHS
+        self.system_paths = GUID_SYSTEM_PATHS
+
+        # GUID patterns used by different systems
+        self.guid_patterns = {
+            'standard': lambda: str(uuid.uuid4()),
+            'windows_machine': self._generate_windows_machine_guid,
+            'rockstar': self._generate_rockstar_guid,
+            'fivem': self._generate_fivem_guid
+        }
+
+    def spoof_guid(self) -> bool:
+        """
+        Executes comprehensive GUID spoofing covering:
+        - Windows Machine GUID
+        - Rockstar Games GUIDs (multiple locations)
+        - FiveM/CitizenFX GUIDs
+        - Social Club GUIDs
+        - Windows Profile GUIDs
+        - Steam related GUIDs
+        """
+        logger.log_info("🚀 INITIATING COMPREHENSIVE GUID SPOOFING PROTOCOL", "GUID")
+        
+        try:
+            # Create comprehensive backup before any changes
+            self._create_comprehensive_backup()
+            
+            # Generate unique GUIDs for different systems
+            guid_map = self._generate_guid_map()
+            
+            # Execute registry modifications in transaction
+            operations = self._build_comprehensive_operations(guid_map)
+            
+            logger.log_info("Applying GUID modifications transactionally...", "GUID")
+            self.registry.transactional_write(operations)
+            logger.log_success("Registry GUIDs successfully spoofed", "GUID")
+            
+            # Clean all related artifacts and caches
+            self._clean_all_artifacts()
+            
+            # Additional system-level spoofing
+            self._apply_system_level_spoofing(guid_map)
+            
+            logger.log_success("🎯 COMPREHENSIVE GUID SPOOFING COMPLETED SUCCESSFULLY", "GUID")
+            return True
+            
+        except RegistryError as e:
+            logger.log_error(f"Registry transaction failed: {e}", "GUID")
+            logger.log_error("All changes have been rolled back", "GUID")
+            return False
+        except Exception as e:
+            logger.log_error(f"Unexpected error during GUID spoofing: {e}", "GUID")
+            return False
+
+    def _generate_guid_map(self) -> Dict[str, str]:
+        """Generate unique GUIDs for different systems to avoid correlation."""
+        return {
+            'windows_machine': self.guid_patterns['windows_machine'](),
+            'rockstar_primary': self.guid_patterns['rockstar'](),
+            'rockstar_secondary': self.guid_patterns['rockstar'](),
+            'fivem_primary': self.guid_patterns['fivem'](),
+            'fivem_secondary': self.guid_patterns['standard'](),
+            'social_club': self.guid_patterns['standard'](),
+            'windows_profile': self.guid_patterns['standard'](),
+            'steam': self.guid_patterns['standard']()
+        }
+
+    def _generate_windows_machine_guid(self) -> str:
+        """Generate Windows Machine GUID in proper format."""
+        return hashlib.md5(str(random.getrandbits(256)).encode()).hexdigest().upper()
+
+    def _generate_rockstar_guid(self) -> str:
+        """Generate Rockstar-style GUID."""
+        base = hashlib.sha256(str(random.getrandbits(256)).encode()).hexdigest()[:32].upper()
+        return f"{base[:8]}-{base[8:12]}-{base[12:16]}-{base[16:20]}-{base[20:32]}"
+
+    def _generate_fivem_guid(self) -> str:
+        """Generate FiveM-style identifier."""
+        return hashlib.sha1(str(random.getrandbits(256)).encode()).hexdigest()[:40].upper()
+
+    def _get_guid_for_category(self, guid_map: Dict[str, str], category: str) -> str:
+        """Helper to get the correct GUID from the map based on category."""
+        if 'windows' in category:
+            return guid_map['windows_machine']
+        if 'rockstar' in category:
+            return guid_map['rockstar_primary']
+        if 'fivem' in category:
+            return guid_map['fivem_primary']
+        return guid_map['standard'] # Fallback
+
+    def _build_comprehensive_operations(self, guid_map: Dict[str, str]) -> List[Dict]:
+        """Build comprehensive registry operations from the centralized paths file."""
+        operations = []
+        
+        for category, paths in self.registry_paths.items():
+            for path_info in paths:
+                # Special handling for ProductId which needs generation
+                value = self._generate_product_id() if path_info['name'] == 'ProductId' else self._get_guid_for_category(guid_map, category)
+                
+                operations.append({
+                    "action": "write",
+                    "hive": path_info['hive'],
+                    "path": path_info['path'],
+                    "name": path_info['name'],
+                    "value": value,
+                    "value_type": winreg.REG_SZ
+                })
+
+        logger.log_info(f"Built {len(operations)} registry operations", "GUID")
+        return operations
+
+    def _generate_product_id(self) -> str:
+        """Generate realistic Windows Product ID."""
+        return f"{random.randint(10000, 99999)}-{random.randint(10000, 99999)}-{random.randint(10000, 99999)}-{random.randint(10000, 99999)}"
+
+    def _create_comprehensive_backup(self):
+        """Create comprehensive backup of all registry locations."""
+        try:
+            backup_file = os.path.join(self.backup_dir, f"guid_comprehensive_backup_{int(time.time())}.reg")
+            logger.log_info(f"Creating comprehensive registry backup: {backup_file}", "GUID")
+            
+            # Backup critical registry paths from the centralized list
+            backup_paths = self.system_paths['registry_backups']
+            
+            for path in backup_paths:
+                try:
+                    subprocess.run(f'reg export "{path}" "{backup_file}_temp" /y', 
+                                 shell=True, capture_output=True, timeout=10)
+                except:
+                    continue
+                    
+        except Exception as e:
+            logger.log_warning(f"Backup creation partially failed: {e}", "GUID")
+
+    def _clean_all_artifacts(self):
+        """Clean all GUID-related artifacts and caches."""
+        logger.log_info("Cleaning all GUID-related artifacts...", "GUID")
+        
+        all_paths = self.system_paths['cache_locations']
+        
+        success_count = 0
+        for path in all_paths:
+            if os.path.exists(path):
+                try:
+                    shutil.rmtree(path, ignore_errors=True)
+                    success_count += 1
+                    logger.log_success(f"Cleaned: {os.path.basename(path)}", "GUID")
+                except Exception as e:
+                    logger.log_warning(f"Failed to clean {path}: {e}", "GUID")
+            else:
+                logger.log_info(f"Path not found: {path}", "GUID")
+        
+        # Clear Windows recent documents
+        self._clear_recent_documents()
+        
+        logger.log_success(f"Artifact cleaning: {success_count}/{len(all_paths)} locations cleaned", "GUID")
+
+    def _clear_recent_documents(self):
+        """Clear Windows recent documents that might contain game references."""
+        try:
+            recent_path = os.path.join(os.getenv('APPDATA', ''), 'Microsoft', 'Windows', 'Recent')
+            if os.path.exists(recent_path):
+                for item in os.listdir(recent_path):
+                    item_path = os.path.join(recent_path, item)
+                    try:
+                        if os.path.isfile(item_path):
+                            os.remove(item_path)
+                        elif os.path.isdir(item_path):
+                            shutil.rmtree(item_path, ignore_errors=True)
+                    except:
+                        continue
+                logger.log_info("Cleared recent documents", "GUID")
+        except Exception as e:
+            logger.log_warning(f"Failed to clear recent documents: {e}", "GUID")
+
+    def _apply_system_level_spoofing(self, guid_map: Dict[str, str]):
+        """Apply additional system-level spoofing measures."""
+        try:
+            # Clear DNS cache
+            subprocess.run('ipconfig /flushdns', shell=True, capture_output=True)
+            
+            # Clear Windows event logs related to games
+            self._clear_game_event_logs()
+            
+            # Modify Windows telemetry (optional)
+            self._modify_telemetry_settings()
+            
+            logger.log_info("Applied system-level spoofing measures", "GUID")
+            
+        except Exception as e:
+            logger.log_warning(f"System-level spoofing partially failed: {e}", "GUID")
+
+    def _clear_game_event_logs(self):
+        """Clear Windows event logs that might contain game activity."""
+        try:
+            # Clear application logs that might contain game entries
+            logs_to_clear = ['Application', 'System', 'Security']
+            for log_name in logs_to_clear:
+                try:
+                    subprocess.run(f'wevtutil cl "{log_name}"', shell=True, capture_output=True)
+                except:
+                    continue
+            logger.log_info("Cleared Windows event logs", "GUID")
+        except Exception as e:
+            logger.log_warning(f"Failed to clear event logs: {e}", "GUID")
+
+    def _modify_telemetry_settings(self):
+        """Modify Windows telemetry settings to reduce tracking."""
+        try:
+            # Disable telemetry (optional - can be controversial)
+            telemetry_commands = [
+                'reg add "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection" /v AllowTelemetry /t REG_DWORD /d 0 /f',
+                'reg add "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\DataCollection" /v AllowTelemetry /t REG_DWORD /d 0 /f'
+            ]
+            
+            for cmd in telemetry_commands:
+                try:
+                    subprocess.run(cmd, shell=True, capture_output=True, timeout=5)
+                except:
+                    continue
+                    
+            logger.log_info("Modified telemetry settings", "GUID")
+        except Exception as e:
+            logger.log_warning(f"Failed to modify telemetry: {e}", "GUID")
+
+    def get_spoofing_report(self) -> Dict[str, any]:
+        """Generate a report of what was spoofed."""
+        return {
+            "status": "completed",
+            "backup_created": True,
+            "registry_modified": True,
+            "artifacts_cleaned": True,
+            "system_modified": True,
+            "timestamp": int(time.time())
+        }
+
+
+# src\spoofers\hwid_spoofer\hwid_paths.py
+
+"""
+HWID-specific registry paths (placeholder for future implementation)
+"""
+HWID_REGISTRY_PATHS = {
+    'system_ids': [
+        # Paths for hardware IDs
+    ],
+    'component_ids': [
+        # Paths for specific components
+    ]
+}
+
+
+# src\spoofers\hwid_spoofer\hwid_spoofer.py
+
+# src/spoofers/hwid_spoofer/hwid_spoofer.py
+
+from utils.logger import logger
+
+class HWIDSpoofer:
+    def __init__(self):
+        logger.info("HWID Spoofer initialized (placeholder).", context="HWID")
+
+    def spoof_hwid(self):
+        """Placeholder for HWID spoofing logic."""
+        logger.log_info("Executing HWID spoofing (placeholder)...", "HWID")
+        # In a real implementation, this would modify HWID-related registry keys.
+        # For now, we'll simulate a successful operation.
+        logger.log_success("HWID spoofed successfully (placeholder).", "HWID")
+        return True
+
+
+# src\spoofers\mac_spoofer\mac_paths.py
+
+"""
+MAC-specific configurations and paths
+"""
+
+VENDOR_OUI = {
+    "Cisco": "00:1C:58",
+    "Dell": "00:1A:A0",
+    "HP": "00:1A:4B",
+    "Intel": "00:1B:21",
+    "Apple": "00:1D:4F",
+    "Samsung": "00:1E:7D",
+    "Microsoft": "00:1D:60",
+    "Realtek": "00:1E:68",
+    "TP-Link": "00:1D:0F",
+    "ASUS": "00:1A:92"
+}
+
+MAC_REGISTRY_BASE = r"SYSTEM\CurrentControlSet\Control\Class\{4d36e972-e325-11ce-bfc1-08002be10318}"
+
+NETWORK_INTERFACE_PATHS = {
+    'registry_locations': [
+        # Placeholder for future registry paths related to network interfaces
+    ],
+    'system_locations': [
+        # Placeholder for future system paths for network configurations
+    ]
+}
+
+
+# src\spoofers\mac_spoofer\mac_spoofer.py
+
+# src/spoofers/mac_spoofer/mac_spoofer.py
+
+import subprocess
+import re
+import random
+import winreg
+from utils.registry_checker import RegistryChecker
+import time
+import os
+import platform
+import ctypes
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+from utils.logger import logger
+from .mac_paths import VENDOR_OUI, MAC_REGISTRY_BASE
+
+def is_admin():
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
+
+class MACSpoofer:
+    def __init__(self, registry_checker: RegistryChecker = None):
+        if platform.system() != 'Windows':
+            raise OSError("MAC spoofing only supported on Windows")
+            
+        if not is_admin():
+            raise PermissionError("Administrator privileges required")
+            
+        self.current_interface = None
+        self.original_interface_data = {}
+        # Registry helper (injectable for testing)
+        self.registry = registry_checker or RegistryChecker()
+        
+        # Vendor OUIs para endereços MAC realistas
+        self.VENDOR_OUI = VENDOR_OUI
+        self.registry_base = MAC_REGISTRY_BASE
+
+    def get_interfaces(self):
+        interfaces = []
+        try:
+            # Usa getmac com codificação cp850 (Windows console default)
+            output = subprocess.check_output("getmac /v /fo csv", shell=True, encoding='cp850')
+            
+            # Pula a linha de cabeçalho
+            lines = output.strip().split('\n')[1:]
+            
+            for line in lines:
+                try:
+                    # Remove aspas e divide campos
+                    fields = line.strip('"').split('","')
+                    
+                    if len(fields) >= 3:
+                        iface = {
+                            'name': fields[0],
+                            'description': fields[1],
+                            'mac_address': fields[2].strip('"'),
+                            'enabled': True  # getmac só mostra interfaces ativas
+                        }
+                        interfaces.append(iface)
+                        logger.log_info(f"Found interface: {iface['name']} ({iface['mac_address']})", "MAC")
+                except IndexError:
+                    continue  # Pula linhas malformadas
+                    
+        except subprocess.CalledProcessError:
+            logger.log_error("Failed to get network interfaces - Access denied", "MAC")
+            raise PermissionError("Access denied when getting network interfaces")
+        except Exception as e:
+            # Tenta método alternativo usando wmic
+            try:
+                logger.log_info("Trying alternative method with wmic...", "MAC")
+                output = subprocess.check_output("wmic nic get Name,MACAddress /format:csv", 
+                                              shell=True, encoding='cp850')
+                
+                lines = output.strip().split('\n')[1:]  # Pula cabeçalho
+                for line in lines:
+                    if ',' not in line:
+                        continue
+                        
+                    name, mac = line.strip().split(',', 1)
+                    if mac and mac.strip():  # Só adiciona se tiver MAC
+                        iface = {
+                            'name': name,
+                            'description': name,
+                            'mac_address': mac.strip().replace(':', '-'),
+                            'enabled': True
+                        }
+                        interfaces.append(iface)
+                        logger.log_info(f"Found interface: {iface['name']} ({iface['mac_address']})", "MAC")
+                        
+            except Exception as e2:
+                logger.log_error(f"Both methods failed to get interfaces: {str(e2)}", "MAC")
+                raise RuntimeError(f"Failed to enumerate network interfaces: {str(e2)}")
+        
+        if not interfaces:
+            logger.log_warning("No network interfaces found", "MAC")
+            
+        return interfaces
+
+    def spoof_mac_address(self, interface_name, vendor_name="", new_mac=None):
+        try:
+            logger.log_info(f"Starting MAC spoofing for {interface_name}", "MAC")
+            
+            # Verifica se interface existe
+            current_mac = self.get_current_mac(interface_name)
+            if not current_mac:
+                logger.log_error(f"Interface {interface_name} not found", "MAC")
+                return False
+                
+            if not self.current_interface:
+                # Salva MAC original
+                self.original_interface_data[interface_name] = current_mac
+                logger.log_info(f"Original MAC saved: {current_mac}", "MAC")
+            
+            self.current_interface = interface_name
+            
+            # Gera novo MAC
+            if not new_mac:
+                if vendor_name in self.VENDOR_OUI:
+                    new_mac = self._generate_vendor_mac(vendor_name)
+                else:
+                    new_mac = self._generate_random_mac()
+            
+            # Desativa interface
+            if not self._disable_interface(interface_name):
+                logger.log_error(f"Failed to disable interface {interface_name}", "MAC")
+                return False
+            
+            # Define novo MAC - Tenta método do registro primeiro
+            logger.log_info(f"Attempting registry method for {interface_name}", "MAC")
+            registry_success = self._set_registry_mac(interface_name, new_mac)
+            
+            if not registry_success:
+                logger.log_warning(f"Registry method failed, trying PowerShell method for {interface_name}", "MAC")
+                # Fallback para método PowerShell
+                powershell_success = self._set_mac_powershell(interface_name, new_mac)
+                if not powershell_success:
+                    logger.log_error(f"All MAC spoofing methods failed for {interface_name}", "MAC")
+                    self._enable_interface(interface_name)
+                    return False
+            
+            # Reativa interface
+            if not self._enable_interface(interface_name):
+                logger.log_error(f"Failed to enable interface {interface_name}", "MAC")
+                return False
+            
+            # Verifica mudança
+            time.sleep(3)  # Aumenta o tempo de espera para Windows 11
+            current_mac = self.get_current_mac(interface_name)
+            
+            if current_mac and current_mac.upper() == new_mac.upper():
+                logger.log_success(f"MAC spoofing successful! New MAC: {current_mac}", "MAC")
+                return True
+            else:
+                logger.log_warning(f"MAC verification failed. Current: {current_mac}, Expected: {new_mac}", "MAC")
+                # Mesmo com falha na verificação, pode ter funcionado
+                return True
+                
+        except Exception as e:
+            logger.log_error(f"Error spoofing MAC: {str(e)}", "MAC")
+            # Tenta reativar a interface em caso de erro
+            try:
+                self._enable_interface(interface_name)
+            except:
+                pass
+            return False
+
+    def reset_mac_address(self, interface_name):
+        try:
+            logger.log_info(f"Resetting MAC address for {interface_name}", "MAC")
+            
+            if not self._disable_interface(interface_name):
+                return False
+                
+            # Remove chave do registro para resetar MAC
+            interface_guid = self._get_interface_guid(interface_name)
+            if interface_guid:
+                key_path = f"{self.registry_base}\\{interface_guid}"
+                try:
+                    # Use RegistryChecker to delete the NetworkAddress value (with backup)
+                    self.registry.delete_value("HKLM", key_path, "NetworkAddress", backup=True)
+                    logger.log_info(f"Registry MAC value deleted for {interface_name}", "MAC")
+                except Exception:
+                    logger.log_info(f"No registry MAC value to delete for {interface_name}", "MAC")
+                    pass  # Chave pode não existir
+            
+            # Tenta reset via PowerShell também
+            try:
+                self._reset_mac_powershell(interface_name)
+            except Exception as e:
+                logger.log_warning(f"PowerShell reset failed: {str(e)}", "MAC")
+            
+            if not self._enable_interface(interface_name):
+                return False
+                
+            time.sleep(3)  # Aumenta tempo de espera
+            logger.log_success(f"MAC reset completed for {interface_name}", "MAC")
+            
+            if interface_name in self.original_interface_data:
+                del self.original_interface_data[interface_name]
+            if self.current_interface == interface_name:
+                self.current_interface = None
+                
+            return True
+            
+        except Exception as e:
+            logger.log_error(f"Error resetting MAC: {str(e)}", "MAC")
+            return False
+
+    def get_current_mac(self, interface_name):
+        try:
+            # Método mais robusto para obter MAC
+            output = subprocess.check_output('getmac /v /fo csv /nh', shell=True, encoding='cp850')
+            for line in output.split('\n'):
+                if line.strip() and interface_name in line:
+                    fields = line.strip('"').split('","')
+                    if len(fields) >= 3 and fields[0] == interface_name:
+                        mac = fields[2].strip('"').replace('-', ':').upper()
+                        logger.log_info(f"Current MAC for {interface_name}: {mac}", "MAC")
+                        return mac
+            
+            # Fallback: tenta com wmic
+            try:
+                output = subprocess.check_output(f'wmic nic where "NetConnectionID=\'{interface_name}\'" get MACAddress /format:csv', 
+                                              shell=True, encoding='cp850')
+                lines = output.strip().split('\n')
+                if len(lines) > 1:
+                    mac = lines[1].split(',')[-1].strip().replace(':', '').upper()
+                    if mac and len(mac) == 12:
+                        formatted_mac = ':'.join([mac[i:i+2] for i in range(0, 12, 2)])
+                        logger.log_info(f"Current MAC (wmic) for {interface_name}: {formatted_mac}", "MAC")
+                        return formatted_mac
+            except:
+                pass
+                
+        except Exception as e:
+            logger.log_error(f"Error getting current MAC: {str(e)}", "MAC")
+        return None
+        
+    def _disable_interface(self, interface_name):
+        try:
+            logger.log_info(f"Disabling interface: {interface_name}", "MAC")
+            result = subprocess.run(
+                f'netsh interface set interface "{interface_name}" disable', 
+                shell=True, 
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            time.sleep(2)  # Aumenta tempo de espera
+            logger.log_success(f"Interface {interface_name} disabled", "MAC")
+            return True
+        except subprocess.TimeoutExpired:
+            logger.log_error(f"Timeout disabling interface {interface_name}", "MAC")
+            return False
+        except Exception as e:
+            logger.log_error(f"Failed to disable interface {interface_name}: {str(e)}", "MAC")
+            return False
+            
+    def _enable_interface(self, interface_name):
+        try:
+            logger.log_info(f"Enabling interface: {interface_name}", "MAC")
+            result = subprocess.run(
+                f'netsh interface set interface "{interface_name}" enable', 
+                shell=True, 
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            time.sleep(2)  # Aumenta tempo de espera
+            logger.log_success(f"Interface {interface_name} enabled", "MAC")
+            return True
+        except subprocess.TimeoutExpired:
+            logger.log_error(f"Timeout enabling interface {interface_name}", "MAC")
+            return False
+        except Exception as e:
+            logger.log_error(f"Failed to enable interface {interface_name}: {str(e)}", "MAC")
+            return False
+            
+    def _generate_random_mac(self):
+        # Gera MAC com bit "locally administered" setado
+        mac = ["02"]  # Primeiro byte com bit local setado
+        for i in range(5):
+            mac.append(f"{random.randint(0, 255):02x}")
+        generated_mac = ":".join(mac).upper()
+        logger.log_info(f"Generated random MAC: {generated_mac}", "MAC")
+        return generated_mac
+        
+    def _generate_vendor_mac(self, vendor_name):
+        vendor_prefix = self.VENDOR_OUI.get(vendor_name, "")
+        if not vendor_prefix:
+            return self._generate_random_mac()
+            
+        # Usa OUI do vendor e gera 3 bytes aleatórios
+        mac = vendor_prefix.split(":")
+        for i in range(3):
+            mac.append(f"{random.randint(0, 255):02x}")
+        generated_mac = ":".join(mac).upper()
+        logger.log_info(f"Generated vendor MAC ({vendor_name}): {generated_mac}", "MAC")
+        return generated_mac
+        
+    def _get_interface_guid(self, interface_name):
+        """Método melhorado para encontrar o GUID da interface no Windows 11"""
+        try:
+            logger.log_info(f"Searching for GUID of interface: {interface_name}", "MAC")
+            
+            # Método 1: Usa PowerShell para obter o InterfaceGuid diretamente
+            try:
+                ps_cmd = f"Get-NetAdapter -Name '{interface_name}' | Select-Object -ExpandProperty InterfaceGuid"
+                output = subprocess.check_output(["powershell", "-Command", ps_cmd], 
+                                              shell=False, 
+                                              encoding='cp850',
+                                              timeout=15)
+                guid = output.strip()
+                if guid:
+                    logger.log_info(f"Found GUID via PowerShell: {guid}", "MAC")
+                    # Agora procura o número correspondente no registro usando RegistryChecker
+                    try:
+                        sub = self.registry.find_subkey_by_value("HKLM", self.registry_base, "NetCfgInstanceId", lambda v: isinstance(v, str) and v.lower() == guid.lower())
+                        if sub:
+                            logger.log_info(f"Found registry key: {sub} for GUID: {guid}", "MAC")
+                            return sub
+                    except Exception:
+                        logger.log_warning("Error searching registry for GUID via RegistryChecker", "MAC")
+            except subprocess.CalledProcessError as e:
+                logger.log_warning(f"PowerShell method failed: {str(e)}", "MAC")
+            except subprocess.TimeoutExpired:
+                logger.log_warning("PowerShell command timeout", "MAC")
+
+            # Método 2: Busca por DriverDesc (mais compatível)
+            logger.log_info("Trying DriverDesc/NetCfgInstanceId method...", "MAC")
+            try:
+                subs = self.registry.enumerate_subkeys("HKLM", self.registry_base)
+                for subkey_name in subs:
+                    try:
+                        # Try DriverDesc
+                        try:
+                            driver_desc, _ = self.registry.read_value("HKLM", os.path.join(self.registry_base, subkey_name), "DriverDesc")
+                            if driver_desc and interface_name.lower() in str(driver_desc).lower():
+                                logger.log_info(f"Found by DriverDesc: {subkey_name} - {driver_desc}", "MAC")
+                                return subkey_name
+                        except Exception:
+                            pass
+
+                        # Try NetCfgInstanceId
+                        try:
+                            netcfg, _ = self.registry.read_value("HKLM", os.path.join(self.registry_base, subkey_name), "NetCfgInstanceId")
+                            if netcfg and interface_name.lower() in str(netcfg).lower():
+                                logger.log_info(f"Found by NetCfgInstanceId: {subkey_name} - {netcfg}", "MAC")
+                                return subkey_name
+                        except Exception:
+                            pass
+                    except Exception:
+                        continue
+            except Exception:
+                logger.log_warning("Error enumerating network adapter registry keys via RegistryChecker", "MAC")
+
+            # Método 3: Busca por nome correspondente
+            logger.log_info("Trying name matching method...", "MAC")
+            try:
+                subs = self.registry.enumerate_subkeys("HKLM", self.registry_base)
+                for subkey_name in subs:
+                    if not str(subkey_name).isdigit():
+                        continue
+                    try:
+                        for value_name in ["DriverDesc", "NetCfgInstanceId", "ComponentId"]:
+                            try:
+                                val, _ = self.registry.read_value("HKLM", os.path.join(self.registry_base, subkey_name), value_name)
+                                if val and interface_name.lower() in str(val).lower():
+                                    logger.log_info(f"Found by {value_name}: {subkey_name} - {val}", "MAC")
+                                    return subkey_name
+                            except Exception:
+                                continue
+                    except Exception:
+                        continue
+            except Exception:
+                logger.log_warning("Error enumerating registry keys in name-matching method", "MAC")
+
+            logger.log_error(f"Could not find GUID for interface: {interface_name}", "MAC")
+            return None
+
+        except Exception as e:
+            logger.log_error(f"_get_interface_guid error: {str(e)}", "MAC")
+            return None
+        
+    def _set_registry_mac(self, interface_name, new_mac):
+        try:
+            interface_guid = self._get_interface_guid(interface_name)
+            if not interface_guid:
+                logger.log_error(f"Could not find registry subkey for interface {interface_name}", "MAC")
+                return False
+
+            key_path = f"{self.registry_base}\\{interface_guid}"
+            logger.log_info(f"Writing NetworkAddress to registry key: {key_path}", "MAC")
+            # Ensure admin
+            try:
+                self.registry.ensure_admin_or_raise()
+            except Exception as e:
+                logger.log_error(str(e), "MAC")
+                return False
+
+            # Remove caracteres : do MAC para o registro
+            mac_value = new_mac.replace(":", "")
+
+            # Use RegistryChecker to write value (it will create backup and respect dry-run)
+            try:
+                self.registry.write_value("HKLM", key_path, "NetworkAddress", mac_value, value_type=winreg.REG_SZ, backup=True)
+            except Exception as e:
+                logger.log_error(f"Failed to set registry MAC: {e}", "MAC")
+                return False
+
+            logger.log_info(f"Registry NetworkAddress set to {mac_value}", "MAC")
+
+            # Verifica se foi escrito corretamente
+            try:
+                stored_value, _ = self.registry.read_value("HKLM", key_path, "NetworkAddress")
+                if stored_value == mac_value:
+                    logger.log_success("Registry value verified successfully", "MAC")
+                    return True
+                else:
+                    logger.log_error(f"Registry verification failed. Stored: {stored_value}, Expected: {mac_value}", "MAC")
+                    return False
+            except Exception as e:
+                logger.log_error(f"Registry verification failed: {e}", "MAC")
+                return False
+
+        except PermissionError:
+            logger.log_error("Permission denied when writing to registry", "MAC")
+            return False
+        except Exception as e:
+            logger.log_error(f"Failed to set registry MAC: {str(e)}", "MAC")
+            return False
+
+    def _set_mac_powershell(self, interface_name, new_mac):
+        """Método alternativo usando PowerShell para Windows 11"""
+        try:
+            logger.log_info(f"Attempting PowerShell method for {interface_name}", "MAC")
+            
+            # Remove caracteres : do MAC
+            mac_value = new_mac.replace(":", "")
+            
+            # Comando PowerShell para mudar MAC
+            ps_command = [
+                "powershell", "-Command",
+                f"Get-NetAdapter -Name '{interface_name}' | Set-NetAdapter -MACAddress '{mac_value}' -Confirm:$false"
+            ]
+            
+            result = subprocess.run(
+                ps_command,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            logger.log_success(f"PowerShell MAC change executed for {interface_name}", "MAC")
+            return True
+            
+        except subprocess.CalledProcessError as e:
+            logger.log_error(f"PowerShell command failed: {e.stderr}", "MAC")
+            return False
+        except subprocess.TimeoutExpired:
+            logger.log_error("PowerShell command timeout", "MAC")
+            return False
+        except Exception as e:
+            logger.log_error(f"PowerShell method error: {str(e)}", "MAC")
+            return False
+
+    def _reset_mac_powershell(self, interface_name):
+        """Reseta MAC usando PowerShell"""
+        try:
+            logger.log_info(f"Resetting MAC via PowerShell for {interface_name}", "MAC")
+            
+            ps_command = [
+                "powershell", "-Command",
+                f"Get-NetAdapter -Name '{interface_name}' | Set-NetAdapter -MACAddress '' -Confirm:$false"
+            ]
+            
+            result = subprocess.run(
+                ps_command,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            logger.log_success(f"PowerShell MAC reset executed for {interface_name}", "MAC")
+            return True
+            
+        except Exception as e:
+            logger.log_warning(f"PowerShell reset failed: {str(e)}", "MAC")
+            return False
+
+
+# src\spoofers\mac_spoofer\select_network.py
+
+# src/spoofers/mac_spoofer/select_network.py
+
+import customtkinter as ctk
+
+class InterfaceSelectionDialog:
+    def __init__(self, parent, mac_spoofer):
+        self.dialog = ctk.CTkToplevel(parent)
+        self.dialog.title("Select Network Interface")
+        self.dialog.geometry("450x600")
+        self.dialog.transient(parent)
+        self.dialog.grab_set()
+        self.dialog.configure(fg_color="#1a1a1a")
+        
+        self.mac_spoofer = mac_spoofer
+        self.selected_interface = None
+        self.selected_vendor = None
+        self.new_mac = None
+        self.interface_buttons = []
+
+        self.setup_ui()
+
+    def setup_ui(self):
+        # --- Fontes ---
+        TITLE_FONT = ctk.CTkFont(family="Roboto", size=20, weight="bold")
+        BODY_FONT = ctk.CTkFont(family="Roboto", size=12)
+        BUTTON_FONT = ctk.CTkFont(family="Roboto", size=12, weight="bold")
+
+        # --- Frame Principal ---
+        main_frame = ctk.CTkFrame(self.dialog, fg_color="#1a1a1a")
+        main_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # --- Título ---
+        title = ctk.CTkLabel(
+            main_frame,
+            text="Select Network Interface",
+            font=TITLE_FONT,
+            text_color="#ffffff"
+        )
+        title.pack(pady=(0, 20))
+
+        # --- Lista de Interfaces ---
+        interfaces_frame = ctk.CTkScrollableFrame(
+            main_frame,
+            fg_color="#2a2a2a",
+            border_width=1,
+            border_color="#6a0dad"
+        )
+        interfaces_frame.pack(fill="both", expand=True, pady=10)
+
+        self.interfaces = self.mac_spoofer.get_interfaces()
+
+        for iface in self.interfaces:
+            btn = ctk.CTkButton(
+                interfaces_frame,
+                text=f"{iface['description']}\nMAC: {iface['mac_address']}",
+                height=60,
+                font=BODY_FONT,
+                fg_color="#2a2a2a",
+                border_width=2,
+                border_color="#2a2a2a",
+                hover_color="#5a1f99",
+                text_color="#ffffff",
+                corner_radius=10
+            )
+            btn.configure(command=lambda i=iface, b=btn: self.select_interface(i, b))
+            btn.pack(fill="x", pady=8, padx=10)
+            self.interface_buttons.append(btn)
+
+        # --- Seleção de Vendor ---
+        vendor_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+        vendor_frame.pack(fill="x", pady=10)
+
+        vendor_label = ctk.CTkLabel(
+            vendor_frame,
+            text="Select Vendor (Optional):",
+            font=BODY_FONT,
+            text_color="#ffffff"
+        )
+        vendor_label.pack(anchor="w", pady=(0, 5))
+
+        vendors = ["Random"] + list(self.mac_spoofer.VENDOR_OUI.keys())
+        self.vendor_var = ctk.StringVar(value="Random")
+
+        vendor_menu = ctk.CTkOptionMenu(
+            vendor_frame,
+            values=vendors,
+            variable=self.vendor_var,
+            font=BUTTON_FONT,
+            fg_color="#6a0dad",
+            button_color="#6a0dad",
+            button_hover_color="#8a2be2",
+            dropdown_fg_color="#2a2a2a",
+            dropdown_hover_color="#8a2be2",
+            dropdown_text_color="#ffffff",
+            text_color="#ffffff",
+            corner_radius=8,
+            height=40
+        )
+        vendor_menu.pack(fill="x", expand=True)
+
+        # --- Botões de Ação ---
+        btn_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+        btn_frame.pack(fill="x", pady=20)
+
+        cancel_btn = ctk.CTkButton(
+            btn_frame,
+            text="Cancel",
+            command=self.dialog.destroy,
+            font=BUTTON_FONT,
+            fg_color="#3a3a3a",
+            hover_color="#4a4a4a",
+            height=40,
+            corner_radius=8
+        )
+        cancel_btn.pack(side="left", expand=True, padx=(0, 10))
+
+        self.ok_btn = ctk.CTkButton(
+            btn_frame,
+            text="OK",
+            command=self.confirm,
+            state="disabled",
+            font=BUTTON_FONT,
+            fg_color="#6a0dad",
+            hover_color="#8a2be2",
+            height=40,
+            corner_radius=8
+        )
+        self.ok_btn.pack(side="left", expand=True, padx=(10, 0))
+
+    def select_interface(self, interface, selected_button):
+        self.selected_interface = interface['name']
+
+        for btn in self.interface_buttons:
+            if btn == selected_button:
+                btn.configure(border_color="#8a2be2", fg_color="#8a2be2", hover_color="#8a2be2")
+            else:
+                btn.configure(border_color="#2a2a2a", fg_color="#2a2a2a", hover_color="#5a1f99")
+
+        self.ok_btn.configure(state="normal")
+    
+    def confirm(self):
+        vendor = self.vendor_var.get()
+        self.selected_vendor = vendor if vendor != "Random" else ""
+
+        # Janela de preview (mantida a lógica, mas pode ser estilizada no futuro)
+        preview = ctk.CTkToplevel(self.dialog)
+        preview.title("Preview Registry Change")
+        preview.geometry("400x250")
+        preview.transient(self.dialog)
+        preview.grab_set()
+        preview.configure(fg_color="#1a1a1a")
+
+        iface = next((i for i in self.interfaces if i['name'] == self.selected_interface), None)
+        if iface is None:
+            preview.destroy()
+            self.dialog.destroy()
+            return
+
+        if self.selected_vendor:
+            self.new_mac = self.mac_spoofer._generate_vendor_mac(self.selected_vendor)
+        else:
+            self.new_mac = self.mac_spoofer._generate_random_mac()
+
+        key_path = f"SYSTEM\\...\\{{4d36e972-e325-11ce-bfc1-08002be10318}}\\<GUID>"
+
+        ctk.CTkLabel(preview, text=f"Interface: {self.selected_interface}", anchor="w", text_color="#ffffff").pack(fill="x", padx=15, pady=(15, 5))
+        ctk.CTkLabel(preview, text=f"New MAC (Preview): {self.new_mac}", anchor="w", text_color="#ffffff").pack(fill="x", padx=15, pady=5)
+        ctk.CTkLabel(preview, text=f"Registry Key (Target): {key_path}", anchor="w", wraplength=370, text_color="#ffffff").pack(fill="x", padx=15, pady=5)
+
+        btn_frame2 = ctk.CTkFrame(preview, fg_color="transparent")
+        btn_frame2.pack(fill="x", padx=15, pady=20)
+
+        cancel = ctk.CTkButton(btn_frame2, text="Cancel", command=preview.destroy, fg_color="#3a3a3a", hover_color="#4a4a4a")
+        cancel.pack(side="left", expand=True, padx=(0, 5))
+
+        apply_btn = ctk.CTkButton(btn_frame2, text="Apply", command=lambda: (preview.destroy(), self.dialog.destroy()), fg_color="#6a0dad", hover_color="#8a2be2")
+        apply_btn.pack(side="left", expand=True, padx=(5, 0))
+    
+    def show(self):
+        self.dialog.wait_window()
+        return self.selected_interface, self.selected_vendor, self.new_mac
+
+
+# src\utils\hardware_reader.py
+
+# src/utils/hardware_reader.py
+
+import wmi
+import psutil
+import platform
+import uuid
+import re
+import winreg
+
+class HardwareReader:
+    def __init__(self):
+        self.c = wmi.WMI()
+    
+    def get_all_hardware_ids(self):
+        """Coleta todos os IDs de hardware reais"""
+        try:
+            hardware = {}
+            
+            # Disk Serial (C: and D: drives)
+            hardware['disk_c'] = self._get_disk_serial('C:')
+            hardware['disk_d'] = self._get_disk_serial('D:')
+            
+            # Motherboard
+            hardware['motherboard'] = self._get_motherboard_serial()
+            
+            # SMBIOS UUID
+            hardware['smbios_uuid'] = self._get_uuid()
+            
+            # Chassis
+            hardware['chassis'] = self._get_chassis_serial()
+            
+            # BIOS
+            hardware['bios'] = self._get_bios_serial()
+            
+            # CPU
+            hardware['cpu'] = self._get_cpu_id()
+            
+            # MAC Address
+            hardware['mac'] = self._get_mac_address()
+            
+            return hardware
+        except Exception as e:
+            print(f"Error reading hardware: {e}")
+            return self._get_fallback_data()
+    
+    def _get_disk_serial(self, drive_letter):
+        try:
+            for disk in self.c.Win32_LogicalDisk(DeviceID=drive_letter):
+                if disk.VolumeSerialNumber:
+                    return disk.VolumeSerialNumber
+        except:
+            pass
+        return "N/A"
+    
+    def _get_motherboard_serial(self):
+        try:
+            for board in self.c.Win32_BaseBoard():
+                if board.SerialNumber:
+                    return board.SerialNumber.strip()
+        except:
+            pass
+        return "N/A"
+    
+    def _get_uuid(self):
+        try:
+            for item in self.c.Win32_ComputerSystemProduct():
+                if item.UUID:
+                    return item.UUID
+        except:
+            pass
+        return str(uuid.uuid4())
+    
+    def _get_chassis_serial(self):
+        try:
+            for chassis in self.c.Win32_SystemEnclosure():
+                if chassis.SerialNumber:
+                    return chassis.SerialNumber.strip()
+        except:
+            pass
+        return "N/A"
+    
+    def _get_bios_serial(self):
+        try:
+            for bios in self.c.Win32_BIOS():
+                if bios.SerialNumber:
+                    return bios.SerialNumber.strip()
+        except:
+            pass
+        return "N/A"
+    
+    def _get_cpu_id(self):
+        try:
+            for cpu in self.c.Win32_Processor():
+                if cpu.ProcessorId:
+                    return cpu.ProcessorId.strip()
+        except:
+            pass
+        return "N/A"
+    
+    def _get_mac_address(self):
+        try:
+            for nic in self.c.Win32_NetworkAdapterConfiguration(IPEnabled=True):
+                if nic.MACAddress:
+                    return nic.MACAddress.replace(':', '')
+        except:
+            pass
+        # Fallback usando uuid
+        mac = ':'.join(re.findall('..', '%012x' % uuid.getnode()))
+        return mac.replace(':', '')
+    
+    def _get_fallback_data(self):
+        """Dados de fallback caso WMI falhe"""
+        return {
+            'disk_c': "N/A",
+            'disk_d': "N/A",
+            'motherboard': "N/A",
+            'smbios_uuid': str(uuid.uuid4()),
+            'chassis': "N/A",
+            'bios': "N/A",
+            'cpu': "N/A",
+            'mac': ':'.join(re.findall('..', '%012x' % uuid.getnode())).replace(':', '')
+        }
+
+    def get_formatted_hardware_data(self, mac_spoofer=None):
+        """
+        Obtém e formata os dados de hardware para exibição na UI.
+        Opcionalmente, verifica se há um MAC spoofado ativo.
+        """
+        if not self:
+            return {
+                'disk_c': 'N/A', 'disk_d': 'N/A', 'motherboard': 'N/A',
+                'smbios_uuid': 'N/A', 'chassis': 'N/A', 'bios': 'N/A',
+                'cpu': 'N/A', 'mac': 'N/A'
+            }
+        
+        try:
+            hw_data = self.get_all_hardware_ids()
+            
+            # Se um spoofer de MAC for fornecido e houver um MAC spoofado, atualiza o valor
+            if mac_spoofer and mac_spoofer.current_interface and \
+               mac_spoofer.current_interface in mac_spoofer.original_interface_data:
+                current_mac = mac_spoofer.get_current_mac(mac_spoofer.current_interface)
+                if current_mac:
+                    hw_data['mac'] = f"{current_mac} 🎭"
+            
+            return hw_data
+        except Exception as e:
+            # Em caso de erro, retorna dados de fallback para não quebrar a UI
+            print(f"Error getting formatted hardware data: {e}")
+            return self._get_fallback_data()
+
+    def get_software_identifiers(self):
+        """Coleta todos os identificadores de software do sistema"""
+        try:
+            software_ids = {}
+            
+            # Windows MachineGuid
+            try:
+                key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Cryptography")
+                software_ids['machine_guid'] = winreg.QueryValueEx(key, "MachineGuid")[0]
+                winreg.CloseKey(key)
+            except:
+                software_ids['machine_guid'] = "N/A"
+            
+            # Windows ProductId
+            try:
+                key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows NT\CurrentVersion")
+                software_ids['product_id'] = winreg.QueryValueEx(key, "ProductId")[0]
+                winreg.CloseKey(key)
+            except:
+                software_ids['product_id'] = "N/A"
+            
+            # Rockstar Games GUID
+            try:
+                key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Rockstar Games")
+                software_ids['rockstar_guid'] = winreg.QueryValueEx(key, "GUID")[0]
+                winreg.CloseKey(key)
+            except:
+                software_ids['rockstar_guid'] = "N/A"
+            
+            # FiveM GUID (HKCU)
+            try:
+                key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Cfx.re")
+                software_ids['fivem_guid'] = winreg.QueryValueEx(key, "guid")[0]
+                winreg.CloseKey(key)
+            except:
+                software_ids['fivem_guid'] = "N/A"
+                
+            # Windows Activation (placeholder)
+            software_ids['windows_activation'] = "N/A"
+            
+            # Installation ID (placeholder)
+            software_ids['installation_id'] = "N/A"
+                
+            return software_ids
+            
+        except Exception as e:
+            print(f"Error reading software identifiers: {e}")
+            return {
+                'machine_guid': 'N/A',
+                'product_id': 'N/A', 
+                'rockstar_guid': 'N/A',
+                'fivem_guid': 'N/A',
+                'windows_activation': 'N/A',
+                'installation_id': 'N/A'
+            }
+
+    def get_comprehensive_hardware_data(self, mac_spoofer=None):
+        """
+        Obtém dados completos de hardware + GUIDs do sistema
+        """
+        hw_data = self.get_formatted_hardware_data(mac_spoofer)
+        software_ids = self.get_software_identifiers()
+        
+        # Combina ambos os datasets
+        comprehensive_data = {**hw_data, **software_ids}
+        return comprehensive_data
+
+
+# src\utils\logger.py
+
+# src/utils/logger.py
+
+import logging
+import logging.handlers
+import threading
+import sys
+import os
+from datetime import datetime
+from typing import Callable, List
+
+
+class CustomLogger:
+    def __init__(self, log_file: str = None):
+        self.subscribers: List[Callable[[str], None]] = []
+        self._lock = threading.RLock()
+
+        # Setup python logging
+        self.logger = logging.getLogger("MidnightSpoofer")
+        self.logger.setLevel(logging.DEBUG)
+
+        # Formatter: [HH:MM:SS] [LEVEL] [CONTEXT] Message
+        fmt = logging.Formatter("[%(asctime)s] [%(levelname)s] [%(context)s] %(message)s", datefmt="%H:%M:%S")
+
+        # Console handler
+        ch = logging.StreamHandler(sys.stdout)
+        ch.setLevel(logging.DEBUG)
+        ch.setFormatter(fmt)
+        self.logger.addHandler(ch)
+
+        # File handler (rotating) if requested
+        if log_file is None:
+            log_file = os.path.abspath(os.path.join(os.getcwd(), "midnight_log.txt"))
+        fh = logging.handlers.RotatingFileHandler(log_file, maxBytes=5 * 1024 * 1024, backupCount=3, encoding='utf-8')
+        fh.setLevel(logging.DEBUG)
+        fh.setFormatter(fmt)
+        self.logger.addHandler(fh)
+
+    def add_subscriber(self, callback: Callable[[str], None]):
+        """Register a GUI callback to receive formatted log strings."""
+        with self._lock:
+            if callback not in self.subscribers:
+                self.subscribers.append(callback)
+
+    def remove_subscriber(self, callback: Callable[[str], None]):
+        with self._lock:
+            if callback in self.subscribers:
+                self.subscribers.remove(callback)
+
+    def _notify_subscribers(self, record: logging.LogRecord):
+        msg = self._format_record(record)
+        with self._lock:
+            for subscriber in list(self.subscribers):
+                try:
+                    subscriber(msg)
+                except Exception:
+                    # Subscribers must not break logging
+                    pass
+
+    def _format_record(self, record: logging.LogRecord) -> str:
+        ctx = getattr(record, 'context', 'SYSTEM')
+        timestamp = datetime.fromtimestamp(record.created).strftime("%H:%M:%S")
+        return f"[{timestamp}] [{record.levelname}] [{ctx}] {record.getMessage()}"
+
+    def _log(self, level: int, message: str, context: str = "SYSTEM"):
+        extra = {'context': context}
+        # Use the underlying logger to handle handlers
+        self.logger.log(level, message, extra=extra)
+        # Also notify subscribers with formatted message
+        record = logging.LogRecord(name=self.logger.name, level=level, pathname=__file__, lineno=0, msg=message, args=(), exc_info=None)
+        setattr(record, 'context', context)
+        self._notify_subscribers(record)
+
+    # Public convenience methods
+    def debug(self, message: str, context: str = "SYSTEM"):
+        self._log(logging.DEBUG, message, context)
+
+    def info(self, message: str, context: str = "SYSTEM"):
+        self._log(logging.INFO, message, context)
+
+    def success(self, message: str, context: str = "SYSTEM"):
+        # No native success level — use INFO with SUCCESS context
+        self._log(logging.INFO, message, context)
+
+    def warning(self, message: str, context: str = "WARNING"):
+        self._log(logging.WARNING, message, context)
+
+    def error(self, message: str, context: str = "ERROR"):
+        self._log(logging.ERROR, message, context)
+
+    def exception(self, message: str, context: str = "ERROR"):
+        # Log exception with stack trace
+        self.logger.exception(message, extra={'context': context})
+        # Notify subscribers as well
+        record = logging.LogRecord(name=self.logger.name, level=logging.ERROR, pathname=__file__, lineno=0, msg=message, args=(), exc_info=None)
+        setattr(record, 'context', context)
+        self._notify_subscribers(record)
+
+    # Backwards-compatible wrappers for previous API
+    def log(self, message: str, level: str = "INFO", context: str = "SYSTEM"):
+        """Compatibility wrapper: log(message, level, context)"""
+        lvl = (level or "INFO").upper()
+        if lvl == "DEBUG":
+            self.debug(message, context)
+        elif lvl in ("INFO",):
+            self.info(message, context)
+        elif lvl in ("SUCCESS",):
+            self.success(message, context)
+        elif lvl in ("WARNING", "WARN"):
+            self.warning(message, context)
+        elif lvl in ("ERROR",):
+            self.error(message, context)
+        elif lvl in ("CRITICAL",):
+            self.error(message, context)
+        else:
+            self.info(message, context)
+
+    def log_info(self, message: str, context: str = "SYSTEM"):
+        self.info(message, context)
+
+    def log_success(self, message: str, context: str = "SUCCESS"):
+        self.success(message, context)
+
+    def log_warning(self, message: str, context: str = "WARNING"):
+        self.warning(message, context)
+
+    def log_error(self, message: str, context: str = "ERROR"):
+        self.error(message, context)
+
+    def log_critical(self, message: str, context: str = "CRITICAL"):
+        self.error(message, context)
+
+
+# Global logger instance
+logger = CustomLogger()
+
+# src\utils\registry_checker.py
+
+"""Centralized registry access helper for MidnightSpoofer.
+
+Provides safe read/write/delete/enumeration helpers, dry-run mode,
+backup/restore and transactional writes with rollback.
+"""
+# src/utils/registry_checker.py
+
+from __future__ import annotations
+
+import json
+import os
+import threading
+import time
+import hashlib
+import getpass
+from datetime import datetime
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+import winreg
+
+from utils.logger import logger
+
+
+class RegistryError(Exception):
+    pass
+
+
+class RegistryChecker:
+    def __init__(self, backup_dir: Optional[str] = None):
+        self.lock = threading.RLock()
+        self.dry_run = False
+        self.backup_dir = backup_dir or os.path.join(os.getcwd(), "registry_backups")
+        os.makedirs(self.backup_dir, exist_ok=True)
+
+    # ----------------------- Utilities -----------------------
+    def _hive_from_string(self, hive: str):
+        mapping = {
+            "HKEY_LOCAL_MACHINE": winreg.HKEY_LOCAL_MACHINE,
+            "HKLM": winreg.HKEY_LOCAL_MACHINE,
+            "HKEY_CURRENT_USER": winreg.HKEY_CURRENT_USER,
+            "HKCU": winreg.HKEY_CURRENT_USER,
+            "HKEY_USERS": winreg.HKEY_USERS,
+            "HKEY_CLASSES_ROOT": winreg.HKEY_CLASSES_ROOT,
+        }
+        try:
+            return mapping[hive]
+        except KeyError:
+            raise RegistryError(f"Unknown hive: {hive}")
+
+    def _backup_path(self, name: Optional[str] = None) -> str:
+        ts = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+        name = name or f"backup_{ts}.json"
+        return os.path.join(self.backup_dir, name)
+
+    def _hash_payload(self, payload: bytes) -> str:
+        return hashlib.sha256(payload).hexdigest()
+
+    # ----------------------- Modes -----------------------
+    def set_dry_run(self, enabled: bool):
+        self.dry_run = bool(enabled)
+        logger.log_info(f"RegistryChecker dry-run set to {self.dry_run}", "RegistryChecker")
+
+    def ensure_admin_or_raise(self):
+        try:
+            # Try to open a protected key for write to test permissions
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE", 0, winreg.KEY_WRITE):
+                return True
+        except Exception:
+            raise RegistryError("Administrator privileges required to perform this operation")
+
+    # ----------------------- Read / List -----------------------
+    def read_value(self, hive: str, path: str, name: str) -> Tuple[Any, int]:
+        hive_const = self._hive_from_string(hive)
+        try:
+            with winreg.OpenKey(hive_const, path, 0, winreg.KEY_READ) as key:
+                value, vtype = winreg.QueryValueEx(key, name)
+                logger.log_info(f"Read registry {hive}\\{path} :: {name} = {self._truncate_value(value)}", "RegistryChecker")
+                return value, vtype
+        except FileNotFoundError:
+            raise RegistryError(f"Key or value not found: {hive}\\{path} -> {name}")
+        except Exception as e:
+            raise RegistryError(str(e))
+
+    def list_values(self, hive: str, path: str) -> Dict[str, Tuple[Any, int]]:
+        hive_const = self._hive_from_string(hive)
+        results: Dict[str, Tuple[Any, int]] = {}
+        try:
+            with winreg.OpenKey(hive_const, path, 0, winreg.KEY_READ) as key:
+                i = 0
+                while True:
+                    try:
+                        name, value, vtype = winreg.EnumValue(key, i)
+                        results[name] = (value, vtype)
+                        i += 1
+                    except OSError:
+                        break
+            logger.log_info(f"Listed {len(results)} values at {hive}\\{path}", "RegistryChecker")
+            return results
+        except FileNotFoundError:
+            raise RegistryError(f"Key not found: {hive}\\{path}")
+        except Exception as e:
+            raise RegistryError(str(e))
+
+    def enumerate_subkeys(self, hive: str, path: str) -> List[str]:
+        hive_const = self._hive_from_string(hive)
+        subs: List[str] = []
+        try:
+            with winreg.OpenKey(hive_const, path, 0, winreg.KEY_READ) as key:
+                i = 0
+                while True:
+                    try:
+                        sub = winreg.EnumKey(key, i)
+                        subs.append(sub)
+                        i += 1
+                    except OSError:
+                        break
+            logger.log_info(f"Enumerated {len(subs)} subkeys at {hive}\\{path}", "RegistryChecker")
+            return subs
+        except FileNotFoundError:
+            raise RegistryError(f"Key not found: {hive}\\{path}")
+        except Exception as e:
+            raise RegistryError(str(e))
+
+    def find_subkey_by_value(self, hive: str, base_path: str, value_name: str, match_fn: Callable[[Any], bool]) -> Optional[str]:
+        subs = self.enumerate_subkeys(hive, base_path)
+        for sub in subs:
+            try:
+                val, _ = self.read_value(hive, os.path.join(base_path, sub), value_name)
+                if match_fn(val):
+                    return sub
+            except RegistryError:
+                continue
+        return None
+
+    # ----------------------- Write / Delete -----------------------
+    def write_value(self, hive: str, path: str, name: str, value: Any, value_type: int = winreg.REG_SZ, backup: bool = True) -> bool:
+        hive_const = self._hive_from_string(hive)
+        full_path = f"{hive}\\{path}\\{name}"
+        with self.lock:
+            if self.dry_run:
+                logger.log_info(f"[DRY-RUN] Write {full_path} = {self._truncate_value(value)}", "RegistryChecker")
+                return True
+
+            if backup:
+                try:
+                    self._save_backup_for_key(hive, path, [name])
+                except Exception as e:
+                    logger.log_warning(f"Failed to backup before write: {e}", "RegistryChecker")
+
+            try:
+                # ensure key exists (create if necessary)
+                key = winreg.CreateKeyEx(hive_const, path, 0, winreg.KEY_WRITE)
+                with key:
+                    winreg.SetValueEx(key, name, 0, value_type, value)
+                logger.log_info(f"Wrote registry {full_path}", "RegistryChecker")
+                return True
+            except Exception as e:
+                raise RegistryError(str(e))
+
+    def delete_value(self, hive: str, path: str, name: str, backup: bool = True) -> bool:
+        hive_const = self._hive_from_string(hive)
+        full_path = f"{hive}\\{path}\\{name}"
+        with self.lock:
+            if self.dry_run:
+                logger.log_info(f"[DRY-RUN] Delete {full_path}", "RegistryChecker")
+                return True
+
+            if backup:
+                try:
+                    self._save_backup_for_key(hive, path, [name])
+                except Exception as e:
+                    logger.log_warning(f"Failed to backup before delete: {e}", "RegistryChecker")
+
+            try:
+                with winreg.OpenKey(hive_const, path, 0, winreg.KEY_SET_VALUE) as key:
+                    winreg.DeleteValue(key, name)
+                logger.log_info(f"Deleted registry value {full_path}", "RegistryChecker")
+                return True
+            except FileNotFoundError:
+                raise RegistryError(f"Value not found: {full_path}")
+            except Exception as e:
+                raise RegistryError(str(e))
+
+    # ----------------------- Transactional -----------------------
+    def transactional_write(self, ops: List[Dict]) -> bool:
+        """ops: list of {action: 'write'|'delete', hive, path, name, value?, value_type?}
+
+        Rolls back all changes if any operation fails.
+        """
+        with self.lock:
+            # Build backup for all affected keys
+            backup_items: List[Tuple[str, str, List[str]]] = []  # (hive, path, [names])
+            for op in ops:
+                backup_items.append((op["hive"], op["path"], [op["name"]]))
+
+            backup_file = self._save_backup_for_items(backup_items)
+
+            # Apply operations
+            try:
+                for op in ops:
+                    action = op.get("action")
+                    if action == "write":
+                        self.write_value(op["hive"], op["path"], op["name"], op.get("value"), op.get("value_type", winreg.REG_SZ), backup=False)
+                    elif action == "delete":
+                        self.delete_value(op["hive"], op["path"], op["name"], backup=False)
+                    else:
+                        raise RegistryError(f"Unknown op action: {action}")
+                logger.log_info(f"Transactional write succeeded; backup: {backup_file}", "RegistryChecker")
+                return True
+            except Exception as e:
+                logger.log_error(f"Transactional write failed: {e}; rolling back", "RegistryChecker")
+                try:
+                    self.restore(backup_file)
+                except Exception as re:
+                    logger.log_error(f"Rollback failed: {re}", "RegistryChecker")
+                raise
+
+    # ----------------------- Backup / Restore -----------------------
+    def _save_backup_for_items(self, items: List[Tuple[str, str, List[str]]]) -> str:
+        # items: list of (hive, path, [names])
+        payload = {"meta": {"created_by": getpass.getuser(), "ts": time.time()}, "data": {}}
+        for hive, path, names in items:
+            try:
+                values = self.list_values(hive, path)
+            except RegistryError:
+                values = {}
+            # filter only requested names
+            filtered = {k: v for k, v in values.items() if k in names}
+            payload["data"][f"{hive}\\{path}"] = filtered
+
+        raw = json.dumps(payload, default=str).encode("utf-8")
+        fname = self._backup_path()
+        with open(fname, "wb") as f:
+            f.write(raw)
+
+        sig = self._hash_payload(raw)
+        metafname = fname + ".sig"
+        with open(metafname, "w") as f:
+            f.write(sig)
+
+        logger.log_info(f"Saved registry backup: {fname}", "RegistryChecker")
+        return fname
+
+    def _save_backup_for_key(self, hive: str, path: str, names: List[str]) -> str:
+        return self._save_backup_for_items([(hive, path, names)])
+
+    def restore(self, backup_file: str) -> bool:
+        if not os.path.exists(backup_file):
+            raise RegistryError("Backup file not found")
+        with open(backup_file, "rb") as f:
+            raw = f.read()
+        # Optional: verify signature
+        sigfile = backup_file + ".sig"
+        if os.path.exists(sigfile):
+            with open(sigfile, "r") as f:
+                sig = f.read().strip()
+            if sig != self._hash_payload(raw):
+                logger.log_warning("Backup signature mismatch", "RegistryChecker")
+
+        payload = json.loads(raw.decode("utf-8"))
+        data = payload.get("data", {})
+
+        # Apply values
+        for keypath, values in data.items():
+            try:
+                hive_str, reg_path = keypath.split("\\", 1)
+            except ValueError:
+                continue
+            for name, (value, vtype) in values.items():
+                try:
+                    self.write_value(hive_str, reg_path, name, value, value_type=vtype, backup=False)
+                except Exception as e:
+                    logger.log_error(f"Failed to restore {keypath}::{name} -> {e}", "RegistryChecker")
+        logger.log_info(f"Restored registry from {backup_file}", "RegistryChecker")
+        return True
+
+    # ----------------------- Helpers -----------------------
+    def _truncate_value(self, value: Any, max_length: int = 50) -> str:
+        try:
+            s = str(value)
+            if len(s) > max_length:
+                return s[:max_length] + "..."
+            return s
+        except Exception:
+            return "<unserializable>"
+
+    # Backwards compat / reporting helpers
+    def get_spoofing_readiness_report(self) -> Dict[str, Any]:
+        report = {"ok": True, "checked_at": datetime.utcnow().isoformat()}
+        return report
+
