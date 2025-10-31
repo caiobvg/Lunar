@@ -89,37 +89,62 @@ class MidnightSpooferGUI:
         self.root.after(100, self.initial_data_load)
 
     def initial_data_load(self):
-        """Load hardware and software data after UI initialization with retry logic"""
+        """Carregamento inicial simplificado - sem pressa"""
         try:
             logger.log_info("Starting initial data loading...", "SYSTEM")
-            self.update_status("Loading system information...")
 
-            # Check if hardware reader is available
-            if not self.controller.hw_reader:
-                logger.log_error("Hardware reader not available during initial load", "HARDWARE")
-                self.update_status("Hardware reader unavailable", is_error=True)
-                self.show_toast("Hardware reader unavailable", "error")
-                return
-
-            # Set loading states for all labels
-            self._set_loading_states()
-
-            # Attempt to load data with retry logic
-            success = self._load_data_with_retry()
-
-            if success:
-                logger.log_success("Initial data loading completed", "SYSTEM")
-                self.update_status("System information loaded", is_success=True)
-                self.show_toast("System information loaded", "success")
-            else:
-                logger.log_error("Initial data loading failed after retries", "SYSTEM")
-                self.update_status("Failed to load system information", is_error=True)
-                self.show_toast("Failed to load system information", "error")
+            # Apenas agenda o carregamento para depois da UI estar totalmente pronta
+            self.root.after(500, self._load_initial_data)
 
         except Exception as e:
-            logger.log_error(f"Critical error in initial data loading: {str(e)}", "SYSTEM")
-            self.update_status("Critical loading error", is_error=True)
-            self.show_toast("Critical loading error", "error")
+            logger.log_error(f"Error scheduling initial load: {str(e)}", "SYSTEM")
+
+    def _load_initial_data(self):
+        """Carrega dados iniciais de forma assíncrona"""
+        try:
+            if not self.controller.hw_reader:
+                logger.log_warning("Hardware reader not available", "HARDWARE")
+                self._set_all_na_states()
+                return
+
+            # Carrega hardware
+            hw_data = self.controller.hw_reader.get_formatted_hardware_data(self.controller.mac_spoofer)
+            if hw_data:
+                hardware_mapping = {
+                    "Disk C:": hw_data.get('disk_c', 'N/A'),
+                    "Disk D:": hw_data.get('disk_d', 'N/A'),
+                    "Motherboard:": hw_data.get('motherboard', 'N/A'),
+                    "Chassis:": hw_data.get('chassis', 'N/A'),
+                    "Bios:": hw_data.get('bios', 'N/A'),
+                    "CPU:": hw_data.get('cpu', 'N/A'),
+                    "MAC:": hw_data.get('mac', 'N/A'),
+                    "UUID:": hw_data.get('smbios_uuid', 'N/A')
+                }
+                self.update_hardware_tab(hardware_mapping)
+            else:
+                self._set_hardware_na_states()
+
+            # Carrega software
+            sw_data = self.controller.hw_reader.get_software_identifiers()
+            if sw_data:
+                software_mapping = {
+                    "Machine GUID:": sw_data.get('machine_guid', 'N/A'),
+                    "FiveM GUID:": sw_data.get('fivem_guid', 'N/A'),
+                    "Rockstar GUID:": sw_data.get('rockstar_guid', 'N/A'),
+                    "Product ID:": sw_data.get('product_id', 'N/A'),
+                    "Installation ID:": sw_data.get('installation_id', 'N/A'),
+                    "Windows Activation:": sw_data.get('windows_activation', 'N/A')
+                }
+                self.update_software_tab(software_mapping)
+            else:
+                self._set_software_na_states()
+
+            self.initial_load_complete = True
+            logger.log_success("Initial data loading completed", "SYSTEM")
+
+        except Exception as e:
+            logger.log_error(f"Error in initial data load: {str(e)}", "SYSTEM")
+            self._set_all_na_states()
 
     def _set_loading_states(self):
         """Set all labels to loading state"""
@@ -139,60 +164,26 @@ class MidnightSpooferGUI:
         except Exception as e:
             logger.log_error(f"Error setting loading states: {str(e)}", "UI")
 
-    def _load_data_with_retry(self, max_retries=3, delay=1000):
-        """Load data with retry logic and timeout handling"""
-        for attempt in range(max_retries):
-            try:
-                logger.log_info(f"Data loading attempt {attempt + 1}/{max_retries}", "SYSTEM")
+    def _set_all_na_states(self):
+        """Define todos os estados como N/A em caso de erro"""
+        self._set_hardware_na_states()
+        self._set_software_na_states()
 
-                # Load hardware data
-                hw_data = self.controller.hw_reader.get_formatted_hardware_data(self.controller.mac_spoofer)
-                if hw_data:
-                    hardware_mapping = {
-                        "Disk C:": hw_data.get('disk_c', 'N/A'),
-                        "Disk D:": hw_data.get('disk_d', 'N/A'),
-                        "Motherboard:": hw_data.get('motherboard', 'N/A'),
-                        "Chassis:": hw_data.get('chassis', 'N/A'),
-                        "Bios:": hw_data.get('bios', 'N/A'),
-                        "CPU:": hw_data.get('cpu', 'N/A'),
-                        "MAC:": hw_data.get('mac', 'N/A'),
-                        "UUID:": hw_data.get('smbios_uuid', 'N/A')
-                    }
-                    self.update_hardware_tab(hardware_mapping)
-                    logger.log_success("Hardware data loaded successfully", "HARDWARE")
-                else:
-                    logger.log_warning("Hardware data returned empty", "HARDWARE")
+    def _set_hardware_na_states(self):
+        """Define estados N/A para hardware"""
+        if hasattr(self, 'hardware_labels'):
+            for label_text in self.hardware_labels:
+                if label_text in self.hardware_labels and self.hardware_labels[label_text].winfo_exists():
+                    self.hardware_labels[label_text].configure(text="N/A", text_color="#888888")
 
-                # Load software data
-                sw_data = self.controller.hw_reader.get_software_identifiers()
-                if sw_data:
-                    software_mapping = {
-                        "Machine GUID:": sw_data.get('machine_guid', 'N/A'),
-                        "FiveM GUID:": sw_data.get('fivem_guid', 'N/A'),
-                        "Rockstar GUID:": sw_data.get('rockstar_guid', 'N/A'),
-                        "Product ID:": sw_data.get('product_id', 'N/A'),
-                        "Installation ID:": sw_data.get('installation_id', 'N/A'),
-                        "Windows Activation:": sw_data.get('windows_activation', 'N/A')
-                    }
-                    self.update_software_tab(software_mapping)
-                    logger.log_success("Software data loaded successfully", "SOFTWARE")
-                else:
-                    logger.log_warning("Software data returned empty", "SOFTWARE")
+    def _set_software_na_states(self):
+        """Define estados N/A para software"""
+        if hasattr(self, 'software_labels'):
+            for label_text in self.software_labels:
+                if label_text in self.software_labels and self.software_labels[label_text].winfo_exists():
+                    self.software_labels[label_text].configure(text="N/A", text_color="#888888")
 
-                return True
 
-            except Exception as e:
-                logger.log_error(f"Data loading attempt {attempt + 1} failed: {str(e)}", "SYSTEM")
-
-                if attempt < max_retries - 1:
-                    logger.log_info(f"Retrying in {delay}ms...", "SYSTEM")
-                    self.root.after(delay, lambda: None)  # Simple delay
-                    delay *= 2  # Exponential backoff
-                else:
-                    logger.log_error("All data loading attempts failed", "SYSTEM")
-                    return False
-
-        return False
 
     def center_window(self):
         self.root.update_idletasks()
@@ -256,30 +247,17 @@ class MidnightSpooferGUI:
         logo_frame = ctk.CTkFrame(sidebar_content, fg_color="transparent")
         logo_frame.pack(fill="x", pady=(0, 30))
         
-        logo_label = ctk.CTkLabel(logo_frame, text="🌙 MIDNIGHT", 
+        logo_label = ctk.CTkLabel(logo_frame, text="MIDNIGHT",
                                  font=ctk.CTkFont(family="Segoe UI", size=24, weight="bold"),
                                  text_color="#6b21ff")
         logo_label.pack(side="left")
         
-        # Botão para atualizar hardware info
-        refresh_hw_btn = ctk.CTkButton(
-            logo_frame,
-            text="🔄",
-            command=self.refresh_all_info,
-            width=40,
-            height=40,
-            fg_color="#2d1152",
-            hover_color="#4a1c6d",
-            font=ctk.CTkFont(size=16)
-        )
-        refresh_hw_btn.pack(side="right")
-        
         nav_buttons = [
-            ("📊 Dashboard", self.show_dashboard),
-            ("🔧 Spoof Tools", self.show_spoof_tools),
-            ("📜 History", self.show_history),
-            ("⚙️ Settings", self.show_settings),
-            ("ℹ️ About", self.show_about)
+            ("Dashboard", self.show_dashboard),
+            ("Spoof Tools", self.show_spoof_tools),
+            ("History", self.show_history),
+            ("Settings", self.show_settings),
+            ("About", self.show_about)
         ]
         
         for text, command in nav_buttons:
@@ -372,7 +350,7 @@ class MidnightSpooferGUI:
         
         self.spoof_button = AnimatedButton(
             progress_frame,
-            text="🚀 START SPOOFING",
+            text="START SPOOFING",
             command=self.start_spoofing_sequence,
             font=ctk.CTkFont(family="Segoe UI", size=18, weight="bold"),
             height=50,
@@ -414,14 +392,30 @@ class MidnightSpooferGUI:
         self.spoofing_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
         self.spoofing_frame.grid_propagate(False)
 
-        # Título da seção
+        # Título da seção com botão refresh à direita
+        title_frame = ctk.CTkFrame(self.spoofing_frame, fg_color="transparent")
+        title_frame.pack(fill="x", padx=20, pady=(20, 15))
+
         spoofing_title = ctk.CTkLabel(
-            self.spoofing_frame,
-            text="🔧 SPOOFING MODULES",
+            title_frame,
+            text="SPOOFING MODULES",
             font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"),
             text_color="#6b21ff"
         )
-        spoofing_title.pack(anchor="w", padx=20, pady=(20, 15))
+        spoofing_title.pack(side="left")
+
+        # Botão refresh à direita do título
+        refresh_btn = ctk.CTkButton(
+            title_frame,
+            text="REFRESH",
+            command=self.refresh_all_info,
+            width=80,
+            height=35,
+            fg_color="#2d1152",
+            hover_color="#4a1c6d",
+            font=ctk.CTkFont(size=12, weight="bold")
+        )
+        refresh_btn.pack(side="right")
 
         # Container para as abas com borda sutil
         tabs_container = ctk.CTkFrame(
@@ -437,44 +431,44 @@ class MidnightSpooferGUI:
         self.setup_custom_tabs(tabs_container)
 
     def setup_custom_tabs(self, parent):
-        """Configura abas customizadas com visual melhorado"""
-        # Container principal das abas
-        self.tabs_main_frame = ctk.CTkFrame(parent, fg_color="transparent")
-        self.tabs_main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        """Configura abas customizadas de forma simples e direta"""
+        try:
+            # Container principal das abas
+            self.tabs_main_frame = ctk.CTkFrame(parent, fg_color="transparent")
+            self.tabs_main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # Frame dos cabeçalhos das abas
-        self.tab_headers_frame = ctk.CTkFrame(self.tabs_main_frame, fg_color="transparent", height=40)
-        self.tab_headers_frame.pack(fill="x", pady=(0, 10))
-        self.tab_headers_frame.pack_propagate(False)
+            # Frame dos cabeçalhos das abas
+            self.tab_headers_frame = ctk.CTkFrame(self.tabs_main_frame, fg_color="transparent", height=40)
+            self.tab_headers_frame.pack(fill="x", pady=(0, 10))
+            self.tab_headers_frame.pack_propagate(False)
 
-        # Conteúdo das abas - frame fixo
-        self.tab_content_frame = ctk.CTkFrame(
-            self.tabs_main_frame,
-            fg_color="transparent"
-        )
-        self.tab_content_frame.pack(fill="both", expand=True)
+            # Conteúdo das abas - frame fixo
+            self.tab_content_frame = ctk.CTkFrame(
+                self.tabs_main_frame,
+                fg_color="transparent"
+            )
+            self.tab_content_frame.pack(fill="both", expand=True)
 
-        # Criar cabeçalhos das abas
-        self.setup_tab_headers()
+            # Criar cabeçalhos das abas
+            self.setup_tab_headers()
 
-        # Inicializar frames de conteúdo
-        self.tab_frames = {}
-        self.current_tab = "HARDWARE"
+            # Criar frames de conteúdo VAZIOS inicialmente
+            self.create_empty_tab_content("HARDWARE")
+            self.create_empty_tab_content("SOFTWARE")
 
-        # Criar ambos os frames de conteúdo inicialmente
-        self.create_tab_content("HARDWARE")
-        self.create_tab_content("SOFTWARE")
+            # Mostrar aba inicial
+            self.show_tab_content("HARDWARE")
 
-        # Mostrar aba inicial
-        self.show_tab_content("HARDWARE")
+        except Exception as e:
+            logger.log_error(f"Error setting up tabs: {str(e)}", "ERROR")
 
     def setup_tab_headers(self):
         """Configura os cabeçalhos das abas com estilo elegante"""
         self.tab_headers = {}
 
         tabs = [
-            ("HARDWARE", "🔩"),
-            ("SOFTWARE", "💻")
+            ("HARDWARE", "🖥️"),
+            ("SOFTWARE", "</>")
         ]
 
         header_container = ctk.CTkFrame(self.tab_headers_frame, fg_color="transparent")
@@ -551,6 +545,163 @@ class MidnightSpooferGUI:
         except Exception as e:
             logger.log_error(f"Error showing tab content '{tab_name}': {str(e)}", "ERROR")
 
+    def setup_hardware_tab_skeleton(self, parent):
+        """Configura apenas o esqueleto da aba hardware - sem dados"""
+        try:
+            # Container principal
+            main_container = ctk.CTkFrame(parent, fg_color="transparent")
+            main_container.pack(fill="both", expand=True)
+
+            # Container scrollable
+            scroll_frame = ctk.CTkScrollableFrame(
+                main_container,
+                fg_color="transparent",
+                scrollbar_fg_color="#2d1152"
+            )
+            scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+            # Frame central
+            center_frame = ctk.CTkFrame(scroll_frame, fg_color="transparent")
+            center_frame.pack(expand=True, fill="both")
+
+            self.hardware_labels = {}
+            hardware_data = [
+                ("", "Disk C:"),
+                ("", "Disk D:"),
+                ("", "Motherboard:"),
+                ("", "Chassis:"),
+                ("", "Bios:"),
+                ("", "CPU:"),
+                ("", "MAC:"),
+                ("", "UUID:")
+            ]
+
+            for icon, label_text in hardware_data:
+                row_frame = ctk.CTkFrame(center_frame, fg_color="transparent")
+                row_frame.pack(fill="x", pady=6, padx=20)
+
+                # Ícone
+                icon_label = ctk.CTkLabel(
+                    row_frame,
+                    text=icon,
+                    text_color="#6b21ff",
+                    font=ctk.CTkFont(size=14),
+                    width=30
+                )
+                icon_label.pack(side="left", padx=(0, 10))
+
+                # Label
+                text_label = ctk.CTkLabel(
+                    row_frame,
+                    text=label_text,
+                    text_color="#b0b0ff",
+                    font=ctk.CTkFont(size=12, weight="bold"),
+                    width=120,
+                    anchor="w"
+                )
+                text_label.pack(side="left", padx=(0, 10))
+
+                # Valor - INICIALMENTE VAZIO/LOADING
+                value_label = ctk.CTkLabel(
+                    row_frame,
+                    text="Loading...",
+                    text_color="#ffaa00",
+                    font=ctk.CTkFont(size=11),
+                    anchor="center",
+                    wraplength=250
+                )
+                value_label.pack(side="left", fill="x", expand=True)
+
+                self.hardware_labels[label_text] = value_label
+
+        except Exception as e:
+            logger.log_error(f"Error setting up hardware skeleton: {str(e)}", "ERROR")
+
+    def setup_software_tab_skeleton(self, parent):
+        """Configura apenas o esqueleto da aba software - sem dados"""
+        try:
+            # Container principal
+            main_container = ctk.CTkFrame(parent, fg_color="transparent")
+            main_container.pack(fill="both", expand=True)
+
+            # Container scrollable
+            scroll_frame = ctk.CTkScrollableFrame(
+                main_container,
+                fg_color="transparent",
+                scrollbar_fg_color="#2d1152"
+            )
+            scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+            # Frame central
+            center_frame = ctk.CTkFrame(scroll_frame, fg_color="transparent")
+            center_frame.pack(expand=True, fill="both")
+
+            self.software_labels = {}
+            software_data = [
+                ("", "Machine GUID:"),
+                ("", "FiveM GUID:"),
+                ("", "Rockstar GUID:"),
+                ("", "Product ID:"),
+                ("", "Installation ID:"),
+                ("", "Windows Activation:")
+            ]
+
+            for icon, label_text in software_data:
+                row_frame = ctk.CTkFrame(center_frame, fg_color="transparent")
+                row_frame.pack(fill="x", pady=6, padx=20)
+
+                # Ícone
+                icon_label = ctk.CTkLabel(
+                    row_frame,
+                    text=icon,
+                    text_color="#00ff88",
+                    font=ctk.CTkFont(size=14),
+                    width=30
+                )
+                icon_label.pack(side="left", padx=(0, 10))
+
+                # Label
+                text_label = ctk.CTkLabel(
+                    row_frame,
+                    text=label_text,
+                    text_color="#b0b0ff",
+                    font=ctk.CTkFont(size=12, weight="bold"),
+                    width=120,
+                    anchor="w"
+                )
+                text_label.pack(side="left", padx=(0, 10))
+
+                # Valor - INICIALMENTE VAZIO/LOADING
+                value_label = ctk.CTkLabel(
+                    row_frame,
+                    text="Loading...",
+                    text_color="#ffaa00",
+                    font=ctk.CTkFont(size=11),
+                    anchor="center",
+                    wraplength=250
+                )
+                value_label.pack(side="left", fill="x", expand=True)
+
+                self.software_labels[label_text] = value_label
+
+        except Exception as e:
+            logger.log_error(f"Error setting up software skeleton: {str(e)}", "ERROR")
+
+    def create_empty_tab_content(self, tab_name):
+        """Cria conteúdo vazio para as abas - rápido e sem flash"""
+        try:
+            content_frame = ctk.CTkFrame(self.tab_content_frame, fg_color="transparent")
+
+            if tab_name == "HARDWARE":
+                self.setup_hardware_tab_skeleton(content_frame)
+            elif tab_name == "SOFTWARE":
+                self.setup_software_tab_skeleton(content_frame)
+
+            self.tab_frames[tab_name] = content_frame
+
+        except Exception as e:
+            logger.log_error(f"Error creating empty {tab_name} tab: {str(e)}", "ERROR")
+
     def create_tab_content(self, tab_name):
         """Cria o conteúdo para cada aba e armazena no dicionário"""
         try:
@@ -591,7 +742,7 @@ class MidnightSpooferGUI:
         # Título da seção
         controls_title = ctk.CTkLabel(
             self.controls_frame,
-            text="⚙️ CONTROLS",
+            text="CONTROLS",
             font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"),
             text_color="#6b21ff"
         )
@@ -611,32 +762,26 @@ class MidnightSpooferGUI:
         for option in toggle_options:
             self.create_toggle_switch(controls_content, option)
 
-    def refresh_hardware_info(self):
-        """Atualiza informações de hardware na aba correspondente com loading feedback"""
+
+
+    def _do_refresh_all(self):
+        """Executa o refresh de forma simples"""
         try:
             if not self.controller.hw_reader:
-                logger.log_error("Hardware reader not available for refresh", "HARDWARE")
                 return
 
-            logger.log_info("Refreshing hardware information...", "HARDWARE")
-
-            # Set loading states
-            if hasattr(self, 'hardware_labels'):
+            # Mostra "Refreshing..." nos labels visíveis
+            if self.current_tab == "HARDWARE" and hasattr(self, 'hardware_labels'):
                 for label_text in self.hardware_labels:
-                    if label_text in self.hardware_labels and self.hardware_labels[label_text].winfo_exists():
+                    if self.hardware_labels[label_text].winfo_exists():
                         self.hardware_labels[label_text].configure(text="Refreshing...", text_color="#ffaa00")
+            elif self.current_tab == "SOFTWARE" and hasattr(self, 'software_labels'):
+                for label_text in self.software_labels:
+                    if self.software_labels[label_text].winfo_exists():
+                        self.software_labels[label_text].configure(text="Refreshing...", text_color="#ffaa00")
 
-            # Small delay to show loading state
-            self.root.after(100, lambda: self._do_refresh_hardware())
-
-        except Exception as e:
-            logger.log_error(f"Error initiating hardware refresh: {str(e)}", "HARDWARE")
-
-    def _do_refresh_hardware(self):
-        """Internal method to perform hardware refresh"""
-        try:
+            # Carrega dados
             hw_data = self.controller.hw_reader.get_formatted_hardware_data(self.controller.mac_spoofer)
-
             if hw_data:
                 hardware_mapping = {
                     "Disk C:": hw_data.get('disk_c', 'N/A'),
@@ -648,43 +793,9 @@ class MidnightSpooferGUI:
                     "MAC:": hw_data.get('mac', 'N/A'),
                     "UUID:": hw_data.get('smbios_uuid', 'N/A')
                 }
+                self.update_hardware_tab(hardware_mapping)
 
-                self.update_hardware_tab(hardware_mapping, is_refresh=True)
-                logger.log_success("Hardware information refreshed", "HARDWARE")
-            else:
-                logger.log_warning("Hardware data refresh returned empty", "HARDWARE")
-                self._set_hardware_error_states()
-
-        except Exception as e:
-            logger.log_error(f"Error refreshing hardware info: {str(e)}", "HARDWARE")
-            self._set_hardware_error_states()
-
-    def refresh_software_info(self):
-        """Atualiza informações de software na aba correspondente com loading feedback"""
-        try:
-            if not self.controller.hw_reader:
-                logger.log_error("Hardware reader not available for software refresh", "SOFTWARE")
-                return
-
-            logger.log_info("Refreshing software information...", "SOFTWARE")
-
-            # Set loading states
-            if hasattr(self, 'software_labels'):
-                for label_text in self.software_labels:
-                    if label_text in self.software_labels and self.software_labels[label_text].winfo_exists():
-                        self.software_labels[label_text].configure(text="Refreshing...", text_color="#ffaa00")
-
-            # Small delay to show loading state
-            self.root.after(100, lambda: self._do_refresh_software())
-
-        except Exception as e:
-            logger.log_error(f"Error initiating software refresh: {str(e)}", "SOFTWARE")
-
-    def _do_refresh_software(self):
-        """Internal method to perform software refresh"""
-        try:
             sw_data = self.controller.hw_reader.get_software_identifiers()
-
             if sw_data:
                 software_mapping = {
                     "Machine GUID:": sw_data.get('machine_guid', 'N/A'),
@@ -694,68 +805,25 @@ class MidnightSpooferGUI:
                     "Installation ID:": sw_data.get('installation_id', 'N/A'),
                     "Windows Activation:": sw_data.get('windows_activation', 'N/A')
                 }
+                self.update_software_tab(software_mapping)
 
-                self.update_software_tab(software_mapping, is_refresh=True)
-                logger.log_success("Software information refreshed", "SOFTWARE")
-            else:
-                logger.log_warning("Software data refresh returned empty", "SOFTWARE")
-                self._set_software_error_states()
-
-        except Exception as e:
-            logger.log_error(f"Error refreshing software info: {str(e)}", "SOFTWARE")
-            self._set_software_error_states()
-
-    def refresh_all_info(self):
-        """Atualiza as informações de hardware e software na interface com validações robustas"""
-        try:
-            # Comprehensive validation
-            if not hasattr(self, 'controller') or self.controller is None:
-                logger.log_error("Controller not initialized", "SYSTEM")
-                self.show_toast("Application not properly initialized", "error")
-                return
-
-            if not hasattr(self.controller, 'hw_reader') or self.controller.hw_reader is None:
-                logger.log_error("Hardware reader not available", "HARDWARE")
-                self.show_toast("Hardware reader unavailable", "error")
-                return
-
-            # Check if UI components are ready
-            if not hasattr(self, 'hardware_labels') or not hasattr(self, 'software_labels'):
-                logger.log_error("UI components not ready for refresh", "UI")
-                self.show_toast("UI not ready for refresh", "error")
-                return
-
-            # Check if labels dictionaries are populated
-            if not self.hardware_labels or not self.software_labels:
-                logger.log_error("Label dictionaries are empty", "UI")
-                self.show_toast("UI labels not initialized", "error")
-                return
-
-            logger.log_info("Refreshing hardware and software information...", "SYSTEM")
-            self.update_status("Refreshing system information...")
-
-            # Update hardware with error handling
-            try:
-                self.refresh_hardware_info()
-            except Exception as hw_e:
-                logger.log_error(f"Hardware refresh failed: {str(hw_e)}", "HARDWARE")
-                self._set_hardware_error_states()
-
-            # Update software with error handling
-            try:
-                self.refresh_software_info()
-            except Exception as sw_e:
-                logger.log_error(f"Software refresh failed: {str(sw_e)}", "SOFTWARE")
-                self._set_software_error_states()
-
-            logger.log_success("Hardware and software info refresh completed", "SYSTEM")
-            self.update_status("Information updated", is_success=True)
+            logger.log_success("System information refreshed", "SYSTEM")
             self.show_toast("Information updated", "success")
 
         except Exception as e:
-            logger.log_error(f"Critical refresh error: {str(e)}", "SYSTEM")
-            self.update_status("Refresh failed", is_error=True)
+            logger.log_error(f"Error during refresh: {str(e)}", "SYSTEM")
             self.show_toast("Refresh failed", "error")
+
+    def refresh_all_info(self):
+        """Refresh simplificado - sem complicações"""
+        try:
+            logger.log_info("Refreshing system information...", "SYSTEM")
+
+            # Apenas agenda o refresh
+            self.root.after(100, self._do_refresh_all)
+
+        except Exception as e:
+            logger.log_error(f"Error scheduling refresh: {str(e)}", "SYSTEM")
 
     def setup_hardware_tab(self, parent):
         """Configura o conteúdo da aba HARDWARE com layout centralizado"""
@@ -780,14 +848,14 @@ class MidnightSpooferGUI:
 
             self.hardware_labels = {}
             hardware_data = [
-                ("💾", "Disk C:", "disk_c"),
-                ("💾", "Disk D:", "disk_d"),
-                ("🔩", "Motherboard:", "motherboard"),
-                ("📦", "Chassis:", "chassis"),
-                ("⚙️", "Bios:", "bios"),
-                ("🚀", "CPU:", "cpu"),
-                ("🖧", "MAC:", "mac"),
-                ("🆔", "UUID:", "smbios_uuid")
+                ("", "Disk C:", "disk_c"),
+                ("", "Disk D:", "disk_d"),
+                ("", "Motherboard:", "motherboard"),
+                ("", "Chassis:", "chassis"),
+                ("", "Bios:", "bios"),
+                ("", "CPU:", "cpu"),
+                ("", "MAC:", "mac"),
+                ("", "UUID:", "smbios_uuid")
             ]
 
             for icon, label_text, key in hardware_data:
@@ -854,12 +922,12 @@ class MidnightSpooferGUI:
 
             self.software_labels = {}
             software_data = [
-                ("🆔", "Machine GUID:", "machine_guid"),
-                ("🎮", "FiveM GUID:", "fivem_guid"),
-                ("⭐", "Rockstar GUID:", "rockstar_guid"),
-                ("📋", "Product ID:", "product_id"),
-                ("🔧", "Installation ID:", "installation_id"),
-                ("🪟", "Windows Activation:", "windows_activation")
+                ("", "Machine GUID:", "machine_guid"),
+                ("", "FiveM GUID:", "fivem_guid"),
+                ("", "Rockstar GUID:", "rockstar_guid"),
+                ("", "Product ID:", "product_id"),
+                ("", "Installation ID:", "installation_id"),
+                ("", "Windows Activation:", "windows_activation")
             ]
 
             for icon, label_text, key in software_data:
@@ -923,7 +991,7 @@ class MidnightSpooferGUI:
         except Exception as e:
             logger.log_error(f"Error setting software error states: {str(e)}", "UI")
 
-    def update_hardware_tab(self, hardware_mapping, is_refresh=False):
+    def update_hardware_tab(self, hardware_mapping):
         """Atualiza os labels na aba Hardware com tratamento de erro e color coding"""
         try:
             for key, value in hardware_mapping.items():
@@ -942,13 +1010,10 @@ class MidnightSpooferGUI:
 
                     self.hardware_labels[key].configure(text=display_value, text_color=text_color)
 
-            if is_refresh:
-                logger.log_info("Hardware tab updated with refresh data", "UI")
-
         except Exception as e:
             logger.log_error(f"Error updating hardware tab: {str(e)}", "ERROR")
 
-    def update_software_tab(self, software_mapping, is_refresh=False):
+    def update_software_tab(self, software_mapping):
         """Atualiza os labels na aba Software com tratamento de erro e color coding"""
         try:
             for key, value in software_mapping.items():
@@ -977,9 +1042,6 @@ class MidnightSpooferGUI:
                         text_color = "#ffffff"  # White for normal data
 
                     self.software_labels[key].configure(text=display_value, text_color=text_color)
-
-            if is_refresh:
-                logger.log_info("Software tab updated with refresh data", "UI")
 
         except Exception as e:
             logger.log_error(f"Error updating software tab: {str(e)}", "ERROR")
@@ -1075,7 +1137,7 @@ class MidnightSpooferGUI:
                 self.show_toast("MAC address spoofed successfully!", "success")
                 
                 # Refresh hardware info to show new MAC
-                self.root.after(1000, self.refresh_hardware_info)
+                self.root.after(1000, self.refresh_all_info)
             else:
                 logger.log_error(f"MAC spoofing failed on {interface_name}", "MAC")
                 self.show_toast("MAC spoofing failed!", "error")
@@ -1116,7 +1178,7 @@ class MidnightSpooferGUI:
                 self.show_toast("MAC address reset to original!", "success")
                 
                 # Refresh hardware info to show original MAC
-                self.root.after(1000, self.refresh_hardware_info)
+                self.root.after(1000, self.refresh_all_info)
             else:
                 logger.log_error(f"MAC reset failed on {interface_name}", "MAC")
                 self.show_toast("MAC reset failed!", "error")
@@ -1142,7 +1204,7 @@ class MidnightSpooferGUI:
         
         logs_title = ctk.CTkLabel(
             logs_header,
-            text="📋 EXECUTION LOG - REAL TIME MONITORING",
+            text="EXECUTION LOG - REAL TIME MONITORING",
             font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"),
             text_color="#ffffff"
         )
@@ -1153,7 +1215,7 @@ class MidnightSpooferGUI:
         
         clear_btn = ctk.CTkButton(
             controls_frame,
-            text="🗑️ Clear",
+            text="Clear",
             command=self.clear_logs,
             width=80,
             height=30,
@@ -1161,10 +1223,10 @@ class MidnightSpooferGUI:
             hover_color="#4a1c6d"
         )
         clear_btn.pack(side="left", padx=5)
-        
+
         export_btn = ctk.CTkButton(
             controls_frame,
-            text="💾 Export",
+            text="Export",
             command=self.export_logs,
             width=80,
             height=30,
@@ -1247,14 +1309,14 @@ class MidnightSpooferGUI:
         from tkinter import messagebox
             
         confirm = messagebox.askyesno(
-            "🚨 CONFIRM SPOOFING",
-            "⚠️  WARNING: This will PERFORM SYSTEM MODIFICATIONS:\n\n"
-            "• TERMINATE Discord, FiveM, Steam processes\n" 
+            "CONFIRM SPOOFING",
+            "WARNING: This will PERFORM SYSTEM MODIFICATIONS:\n\n"
+            "• TERMINATE Discord, FiveM, Steam processes\n"
             "• RENAME Discord RPC folders to break tracking\n"
             "• CLEAN FiveM cache and registry traces\n"
             "• RESET network configurations\n"
             "• DELETE temporary system files\n\n"
-            "✅ This is NOT a simulation - changes will be made!\n\n"
+            "This is NOT a simulation - changes will be made!\n\n"
             "Continue with spoofing protocol?",
             icon='warning'
         )
@@ -1267,7 +1329,7 @@ class MidnightSpooferGUI:
 
     def start_spoofing(self):
         self.cleaning_in_progress = True
-        self.spoof_button.configure(state="disabled", text="🔄 SPOOFING...")
+        self.spoof_button.configure(state="disabled", text="SPOOFING...")
         self.spoof_button.start_pulse()
         self.clear_logs()
         self.update_status("Executing spoofing protocol")
@@ -1311,7 +1373,7 @@ class MidnightSpooferGUI:
     def handle_spoofing_finish(self):
         """Callback: Ações de UI ao finalizar (sucesso ou falha)."""
         self.cleaning_in_progress = False
-        self.spoof_button.configure(state="normal", text="🚀 START SPOOFING")
+        self.spoof_button.configure(state="normal", text="START SPOOFING")
         self.spoof_button.stop_pulse()
 
     def clear_logs(self):
@@ -1357,21 +1419,19 @@ class MidnightSpooferGUI:
         about_text = """
         Midnight Spoofer Beta
         Advanced system identity protection
-        
+
         • Discord RPC spoofing
         • FiveM cache cleaning
         • Network configuration reset
         • Registry sanitization
         • Hardware ID detection
-        • MAC Address spoofing 🆕
-        
-        ⚠️ Always run as Administrator
+        • MAC Address spoofing
+
+        Always run as Administrator
         for full functionality.
-        
-        📌 Educational purposes only
-        
-        🚧 Under active development
-        """   
+
+        Under active development
+        """
         messagebox.showinfo("About Midnight Spoofer", about_text)
 
     def run(self):
