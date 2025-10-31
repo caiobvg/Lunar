@@ -108,7 +108,7 @@ class GUIDSpoofer:
             return guid_map['rockstar_primary']
         if 'fivem' in category:
             return guid_map['fivem_primary']
-        return guid_map['standard'] # Fallback
+        return guid_map['social_club'] # Fallback to social_club which is a standard GUID
 
     def _build_comprehensive_operations(self, guid_map: Dict[str, str]) -> List[Dict]:
         """Build comprehensive registry operations from the centralized paths file."""
