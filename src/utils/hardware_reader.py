@@ -179,26 +179,29 @@ class HardwareReader:
         """
         from src.utils.logger import logger
 
-        # Método 1: SLMGR (mais confiável)
+        # Método 1: SLMGR (mais confiável) - usando caminho completo
         try:
             logger.log_info("Tentando detectar ativação via SLMGR", "WINDOWS_ACTIVATION")
+            slmgr_path = r"C:\Windows\System32\slmgr.vbs"
             result = subprocess.run(
-                ['slmgr', '/xpr'],
+                ['cscript', slmgr_path, '/xpr'],
                 capture_output=True,
                 text=True,
-                timeout=10,
+                timeout=15,
                 creationflags=subprocess.CREATE_NO_WINDOW
             )
 
             output = result.stdout.lower()
-            if "permanently" in output or "activated" in output:
+            # Verificar tanto português quanto inglês
+            if ("permanentemente" in output or "permanently" in output or
+                "ativado" in output or "activated" in output or "licenciado" in output):
                 logger.log_success("Windows detectado como ativado via SLMGR", "WINDOWS_ACTIVATION")
                 return "Ativado"
-            elif "expired" in output or "expirou" in output:
+            elif "expired" in output or "expirou" in output or "expirada" in output:
                 logger.log_warning("Windows detectado como expirado via SLMGR", "WINDOWS_ACTIVATION")
                 return "Expirou"
             else:
-                logger.log_info("SLMGR não indicou ativação clara", "WINDOWS_ACTIVATION")
+                logger.log_info(f"SLMGR output não reconhecido: {output[:100]}", "WINDOWS_ACTIVATION")
 
         except subprocess.TimeoutExpired:
             logger.log_warning("SLMGR timeout - método alternativo será usado", "WINDOWS_ACTIVATION")
@@ -207,33 +210,59 @@ class HardwareReader:
         except Exception as e:
             logger.log_error(f"Erro ao executar SLMGR: {str(e)}", "WINDOWS_ACTIVATION")
 
-        # Método 2: Registry
-        try:
-            logger.log_info("Tentando detectar ativação via Registry", "WINDOWS_ACTIVATION")
-            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
-                              r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform",
-                              0, winreg.KEY_READ) as key:
-                license_status, _ = winreg.QueryValueEx(key, "LicenseStatus")
-                if license_status == 1:
-                    logger.log_success("Windows detectado como ativado via Registry", "WINDOWS_ACTIVATION")
-                    return "Ativado (Registry)"
-                elif license_status == 0:
-                    logger.log_info("Windows detectado como não ativado via Registry", "WINDOWS_ACTIVATION")
-                    return "Não Ativado"
-        except FileNotFoundError:
-            logger.log_info("Chave de registro de ativação não encontrada", "WINDOWS_ACTIVATION")
-        except Exception as e:
-            logger.log_error(f"Erro ao ler registro de ativação: {str(e)}", "WINDOWS_ACTIVATION")
+        # Método 2: Registry - múltiplas chaves
+        registry_paths = [
+            r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform",
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsActivationTechnologies\LicensingState"
+        ]
 
-        # Método 3: WMI
+        for reg_path in registry_paths:
+            try:
+                logger.log_info(f"Tentando detectar ativação via Registry: {reg_path}", "WINDOWS_ACTIVATION")
+                with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, reg_path, 0, winreg.KEY_READ) as key:
+                    # Tentar diferentes valores dependendo da chave
+                    if "SoftwareProtectionPlatform" in reg_path:
+                        license_status, _ = winreg.QueryValueEx(key, "LicenseStatus")
+                        if license_status == 1:
+                            logger.log_success("Windows detectado como ativado via Registry (SPP)", "WINDOWS_ACTIVATION")
+                            return "Ativado (Registry)"
+                        elif license_status == 0:
+                            logger.log_info("Windows detectado como não ativado via Registry (SPP)", "WINDOWS_ACTIVATION")
+                            return "Não Ativado"
+                    elif "LicensingState" in reg_path:
+                        licensing_state, _ = winreg.QueryValueEx(key, "LicensingState")
+                        # LicensingState: bit 0 = licensed, bit 1 = activated
+                        if licensing_state & 1:  # Bit 0 set = licensed
+                            logger.log_success("Windows detectado como ativado via Registry (LicensingState)", "WINDOWS_ACTIVATION")
+                            return "Ativado (Registry)"
+                        else:
+                            logger.log_info("Windows detectado como não ativado via Registry (LicensingState)", "WINDOWS_ACTIVATION")
+                            return "Não Ativado"
+            except FileNotFoundError:
+                continue  # Tentar próxima chave
+            except Exception as e:
+                logger.log_error(f"Erro ao ler registro {reg_path}: {str(e)}", "WINDOWS_ACTIVATION")
+                continue
+
+        logger.log_info("Chaves de registro de ativação não encontradas ou inacessíveis", "WINDOWS_ACTIVATION")
+
+        # Método 3: WMI - verificação mais robusta
         if self.wmi_available:
             try:
                 logger.log_info("Tentando detectar ativação via WMI", "WINDOWS_ACTIVATION")
-                for product in self.c.Win32_ComputerSystemProduct():
-                    if hasattr(product, 'Vendor') and product.Vendor:
-                        if "microsoft" in product.Vendor.lower():
-                            # Verificar se há indicação de ativação
-                            logger.log_success("Windows detectado como ativado via WMI", "WINDOWS_ACTIVATION")
+                for os_info in self.c.Win32_OperatingSystem():
+                    if hasattr(os_info, 'LicenseStatus') and os_info.LicenseStatus is not None:
+                        if os_info.LicenseStatus == 1:  # Licensed
+                            logger.log_success("Windows detectado como ativado via WMI (LicenseStatus)", "WINDOWS_ACTIVATION")
+                            return "Ativado (WMI)"
+                        elif os_info.LicenseStatus == 0:  # Unlicensed
+                            logger.log_info("Windows detectado como não ativado via WMI", "WINDOWS_ACTIVATION")
+                            return "Não Ativado"
+                    # Verificar ProductType para Windows genuíno
+                    if hasattr(os_info, 'ProductType') and os_info.ProductType == 1:  # Client OS
+                        # Verificar se há chave de produto válida
+                        if hasattr(os_info, 'SerialNumber') and os_info.SerialNumber:
+                            logger.log_success("Windows detectado como ativado via WMI (ProductType)", "WINDOWS_ACTIVATION")
                             return "Ativado (WMI)"
             except Exception as e:
                 logger.log_error(f"Erro ao verificar WMI para ativação: {str(e)}", "WINDOWS_ACTIVATION")
