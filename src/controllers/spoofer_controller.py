@@ -2,6 +2,7 @@
 
 import threading
 from datetime import datetime
+import psutil
 from utils.logger import logger
 
 class SpoofingController:
@@ -17,6 +18,32 @@ class SpoofingController:
     def set_ui_callbacks(self, callbacks):
         """Allows the GUI to register its callbacks with the controller."""
         self.ui_callbacks = callbacks
+
+    def check_discord_process(self):
+        """Verifica e encerra processos do Discord corretamente"""
+        discord_processes = ["discord.exe", "discordptb.exe", "discordcanary.exe"]
+        processes_found = []
+
+        for proc in psutil.process_iter(['name']):
+            try:
+                if proc.info['name'] and proc.info['name'].lower() in discord_processes:
+                    processes_found.append(proc)
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+
+        if processes_found:
+            logger.log_info(f"Found {len(processes_found)} Discord process(es), terminating...", "DISCORD")
+            for process in processes_found:
+                try:
+                    process.terminate()
+                    process.wait(timeout=5)  # Wait for process to terminate
+                    logger.log_success(f"Terminated: {process.name()}", "DISCORD")
+                except Exception as e:
+                    logger.log_warning(f"Failed to terminate {process.name()}: {str(e)}", "DISCORD")
+            return True
+        else:
+            logger.log_info("Discord is not running (this is OK)", "DISCORD")
+            return True  # ← MUDANÇA CRÍTICA: Retorna True mesmo quando não encontrado
 
     def start_spoofing_thread(self, toggle_states, selected_interface, selected_vendor, selected_mac):
         """Inicia a sequência de spoofing em uma nova thread."""
