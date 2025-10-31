@@ -363,24 +363,14 @@ class MidnightSpooferGUI:
         controls_content.pack(fill="both", expand=True, padx=20, pady=(0, 20))
         
         toggle_options = [
+            "HWID SPOOFING",
             "MAC SPOOFING",
-            "GUID SPOOFING", 
-            "HWID SPOOFER",
-            "EFI SPOOFER",
-            "RESET TPM",
-            "ENABLE VPN"
+            "GUID SPOOFING"
         ]
-        
+
         self.toggle_switches = {}
         for option in toggle_options:
             self.create_toggle_switch(controls_content, option)
-
-        # Dry-run global toggle for registry changes
-        self.dry_run_var = ctk.BooleanVar(value=False)
-        dry_frame = ctk.CTkFrame(controls_content, fg_color="transparent")
-        dry_frame.pack(fill="x", pady=(10, 0))
-        dry_chk = ctk.CTkCheckBox(dry_frame, text="Dry-run (do not apply registry changes)", variable=self.dry_run_var)
-        dry_chk.pack(anchor="w")
 
     def refresh_all_info(self):
         """Atualiza as informações de hardware e software na interface"""
@@ -407,18 +397,18 @@ class MidnightSpooferGUI:
                 "Bios:": hw_data.get('bios', 'N/A'),
                 "Cpu:": hw_data.get('cpu', 'N/A'),
                 "Mac:": hw_data.get('mac', 'N/A'),
-                "Smbios UUID:": hw_data.get('smbios_uuid', 'N/A')
+                "UUID:": hw_data.get('smbios_uuid', 'N/A')
             }
             self.update_hardware_tab(hardware_mapping)
             
             # Atualizar aba Software
             software_mapping = {
                 "Machine GUID:": sw_data.get('machine_guid', 'N/A'),
-                "Product ID:": sw_data.get('product_id', 'N/A'),
-                "Rockstar GUID:": sw_data.get('rockstar_guid', 'N/A'),
                 "FiveM GUID:": sw_data.get('fivem_guid', 'N/A'),
-                "Windows Activation:": sw_data.get('windows_activation', 'N/A'),
-                "Installation ID:": sw_data.get('installation_id', 'N/A')
+                "Rockstar GUID:": sw_data.get('rockstar_guid', 'N/A'),
+                "Product ID:": sw_data.get('product_id', 'N/A'),
+                "Installation ID:": sw_data.get('installation_id', 'N/A'),
+                "Windows Activation:": sw_data.get('windows_activation', 'N/A')
             }
             self.update_software_tab(software_mapping)
             
@@ -437,7 +427,7 @@ class MidnightSpooferGUI:
         
         self.hardware_labels = {}
         hardware_data_template = [
-            "Disk C:", "Disk D:", "Motherboard:", "Chassis:", "Bios:", "Cpu:", "Mac:", "Smbios UUID:"
+            "Disk C:", "Disk D:", "Motherboard:", "Chassis:", "Bios:", "Cpu:", "Mac:", "UUID:"
         ]
         
         for label_text in hardware_data_template:
@@ -462,7 +452,7 @@ class MidnightSpooferGUI:
         
         self.software_labels = {}
         software_data_template = [
-            "Machine GUID:", "Product ID:", "Rockstar GUID:", "FiveM GUID:", "Windows Activation:", "Installation ID:"
+            "Machine GUID:", "FiveM GUID:", "Rockstar GUID:", "Product ID:", "Installation ID:", "Windows Activation:"
         ]
         
         for label_text in software_data_template:
