@@ -251,19 +251,31 @@ class LoginApp:
         back_btn.pack(pady=10)
 
     def show_login(self):
-        """Return to login screen"""
-        # Hide other frames
-        if hasattr(self, 'register_frame'):
-            self.register_frame.pack_forget()
-        if hasattr(self, 'license_frame'):
-            self.license_frame.pack_forget()
+        """Return to login screen - CORRIGIDO"""
+        try:
+            # Hide other frames
+            if hasattr(self, 'register_frame') and self.register_frame:
+                self.register_frame.pack_forget()
+                self.register_frame.destroy()
+                delattr(self, 'register_frame')
 
-        # Clear any stored license
-        if hasattr(self, 'validated_license'):
-            delattr(self, 'validated_license')
+            if hasattr(self, 'license_frame') and self.license_frame:
+                self.license_frame.pack_forget()
+                self.license_frame.destroy()
+                delattr(self, 'license_frame')
 
-        # Show main login
-        self.main_frame.pack(pady=40, padx=40, fill="both", expand=True)
+            # Clear any stored license
+            if hasattr(self, 'validated_license'):
+                delattr(self, 'validated_license')
+
+            # Ensure main login frame is visible
+            if hasattr(self, 'main_frame'):
+                self.main_frame.pack(pady=40, padx=40, fill="both", expand=True)
+
+        except Exception as e:
+            print(f"Error in show_login: {e}")
+            # Fallback: recriar a interface completa se necessário
+            self.setup_login_window()
 
     def login(self):
         """Handle login attempt"""
@@ -283,7 +295,7 @@ class LoginApp:
             messagebox.showerror("Login Failed", "Invalid username or password")
 
     def register(self):
-        """Handle user registration"""
+        """Handle user registration - CORRIGIDO"""
         data = {}
         for key, entry in self.reg_entries.items():
             data[key] = entry.get().strip()
@@ -308,7 +320,13 @@ class LoginApp:
         # Attempt registration
         if self.auth.register_user(data['username'], data['email'], data['password'], data['license_key']):
             messagebox.showinfo("Success", "Account created successfully! Please login.")
+
+            # CORREÇÃO: Redirecionar para login e preencher email
             self.show_login()
+            self.username_entry.delete(0, 'end')
+            self.username_entry.insert(0, data['email'])
+            self.password_entry.focus_set()
+
         else:
             messagebox.showerror("Error", "Username, email, or license key already exists")
 
@@ -399,7 +417,7 @@ class LoginApp:
         back_btn.pack(pady=5)
 
     def register_with_validated_license(self):
-        """Handle registration with pre-validated license"""
+        """Handle registration with pre-validated license - CORRIGIDO"""
         data = {}
         for key, entry in self.reg_entries.items():
             data[key] = entry.get().strip()
@@ -420,12 +438,45 @@ class LoginApp:
         # Use the pre-validated license key
         license_key = self.validated_license
 
+        # DEBUG: Verificar existência antes de registrar
+        print("=== DEBUG REGISTRO ===")
+        print(f"Username: {data['username']}")
+        print(f"Email: {data['email']}")
+        print(f"License: {license_key}")
+
+        # Verifica existência antes de registrar
+        check_result = self.auth.check_user_exists(data['username'], data['email'])
+        print(f"Check result: {check_result}")
+
         # Attempt registration
-        if self.auth.register_user(data['username'], data['email'], data['password'], license_key):
+        success = self.auth.register_user(data['username'], data['email'], data['password'], license_key)
+        print(f"Resultado registro: {success}")
+
+        if success:
             messagebox.showinfo("Success", "Account created successfully! You can now login.")
+
+            # CORREÇÃO: Redirecionar para login e preencher email
             self.show_login()
+            self.username_entry.delete(0, 'end')
+            self.username_entry.insert(0, data['email'])
+            self.password_entry.focus_set()
+
         else:
-            messagebox.showerror("Error", "Username or email already exists")
+            # Mensagem mais específica baseada na verificação
+            if check_result['email_exists'] and check_result['username_exists']:
+                error_msg = "Both email and username are already registered"
+            elif check_result['email_exists']:
+                error_msg = "Email is already registered"
+            elif check_result['username_exists']:
+                error_msg = "Username is already taken"
+            else:
+                error_msg = "Unable to create account. Possible reasons:\n" \
+                           "• Email already registered\n" \
+                           "• Username already taken\n" \
+                           "• License key already used\n" \
+                           "• Network connection issue"
+
+            messagebox.showerror("Registration Failed", error_msg)
 
     def activate_license(self):
         """Handle license activation (legacy method)"""

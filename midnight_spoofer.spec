@@ -74,5 +74,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,  # Add icon if you have one
+    icon='favicon.ico',
 )

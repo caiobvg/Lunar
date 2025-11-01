@@ -91,53 +91,117 @@ class AuthSystemFirebase:
             print(f"❌ Erro ao validar licença: {e}")
             return False
 
-    def register_user(self, username: str, email: str, password: str, license_key: str) -> bool:
-        """Registra usuário COM VALIDAÇÃO NO FIREBASE"""
+    def check_user_exists(self, username: str, email: str) -> Dict[str, bool]:
+        """Verifica se username ou email já existem"""
+        result = {'username_exists': False, 'email_exists': False}
+
         try:
-            print(f"👤 Registrando usuário: {username}")
-            
+            # Verifica email no Firebase Auth
+            try:
+                auth.get_user_by_email(email)
+                result['email_exists'] = True
+            except auth.UserNotFoundError:
+                pass
+            except Exception as e:
+                print(f"⚠️ Erro ao verificar email: {e}")
+
+            # Verifica username no Firestore
+            try:
+                user_docs = self.users_ref.where('username', '==', username).limit(1).get()
+                if user_docs:
+                    result['username_exists'] = True
+            except Exception as e:
+                print(f"⚠️ Erro ao verificar username: {e}")
+
+        except Exception as e:
+            print(f"❌ Erro geral na verificação: {e}")
+
+        return result
+
+    def register_user(self, username: str, email: str, password: str, license_key: str) -> bool:
+        """Registra usuário COM VALIDAÇÃO NO FIREBASE - CORRIGIDO"""
+        try:
+            print(f"👤 Registrando usuário: {username}, email: {email}")
+
             # 1. Valida licença no Firebase
             if not self.validate_license(license_key):
+                print("❌ Licença inválida")
                 return False
 
-            # 2. Cria usuário no Firebase Auth
-            user_record = auth.create_user(
-                email=email,
-                password=password,
-                display_name=username
-            )
+            # 2. Verifica se email já existe ANTES de tentar criar
+            try:
+                print(f"🔍 Verificando se email já existe: {email}")
+                existing_user = auth.get_user_by_email(email)
+                print(f"❌ Email já está em uso: {email}")
+                return False
+            except auth.UserNotFoundError:
+                print("✅ Email disponível")
+                pass  # Email não existe, pode continuar
+            except Exception as e:
+                print(f"⚠️ Erro ao verificar email: {e}")
+                # Continua mesmo com erro na verificação
 
-            print(f"✅ Usuário criado no Auth: {user_record.uid}")
+            # 3. Verifica se username já existe no Firestore
+            try:
+                print(f"🔍 Verificando se username já existe: {username}")
+                user_docs = self.users_ref.where('username', '==', username).limit(1).get()
+                if user_docs:
+                    print(f"❌ Username já está em uso: {username}")
+                    return False
+                print("✅ Username disponível")
+            except Exception as e:
+                print(f"⚠️ Erro ao verificar username: {e}")
 
-            # 3. Marca licença como usada
-            self.licenses_ref.document(license_key).update({
-                'used': True,
-                'used_by': user_record.uid,
-                'used_at': datetime.now().isoformat(),
-                'used_by_username': username
-            })
+            # 4. Cria usuário no Firebase Auth
+            try:
+                print("🚀 Criando usuário no Firebase Auth...")
+                user_record = auth.create_user(
+                    email=email,
+                    password=password,
+                    display_name=username
+                )
+                print(f"✅ Usuário criado no Auth: {user_record.uid}")
 
-            print("✅ Licença marcada como usada")
+                # 5. Marca licença como usada
+                print("🏷️ Marcando licença como usada...")
+                self.licenses_ref.document(license_key).update({
+                    'used': True,
+                    'used_by': user_record.uid,
+                    'used_at': datetime.now().isoformat(),
+                    'used_by_username': username
+                })
+                print("✅ Licença marcada como usada")
 
-            # 4. Salva dados adicionais no Firestore
-            self.users_ref.document(user_record.uid).set({
-                'username': username,
-                'email': email,
-                'license_key': license_key,
-                'created_at': datetime.now().isoformat(),
-                'last_login': datetime.now().isoformat(),
-                'is_active': True,
-                'user_id': user_record.uid
-            })
+                # 6. Salva dados adicionais no Firestore
+                print("💾 Salvando dados no Firestore...")
+                self.users_ref.document(user_record.uid).set({
+                    'username': username,
+                    'email': email,
+                    'license_key': license_key,
+                    'created_at': datetime.now().isoformat(),
+                    'last_login': datetime.now().isoformat(),
+                    'is_active': True,
+                    'user_id': user_record.uid
+                })
+                print("✅ Dados salvos no Firestore")
+                return True
 
-            print("✅ Dados salvos no Firestore")
-            return True
+            except auth.EmailAlreadyExistsError:
+                print("❌ Email já está em uso (durante criação)")
+                return False
+            except Exception as e:
+                print(f"❌ Erro durante criação do usuário: {e}")
+                # Tenta limpar usuário criado parcialmente
+                try:
+                    if 'user_record' in locals():
+                        auth.delete_user(user_record.uid)
+                        print("🧹 Usuário removido do Auth devido a erro")
+                except:
+                    pass
+                return False
 
-        except auth.EmailAlreadyExistsError:
-            print("❌ Email já está em uso")
-            return False
         except Exception as e:
-            print(f"❌ Erro no registro: {e}")
+            print(f"❌ Erro crítico no registro: {e}")
             return False
 
     def verify_login(self, email: str, password: str) -> bool:
@@ -166,17 +230,39 @@ class AuthSystemFirebase:
             print(f"❌ Erro no login: {e}")
             return False
 
+    def cleanup_test_data(self, email: str, username: str):
+        """Remove dados de teste (use com cuidado!)"""
+        try:
+            # Encontra usuário pelo email
+            user = auth.get_user_by_email(email)
+
+            # Remove do Auth
+            auth.delete_user(user.uid)
+            print(f"✅ Usuário removido do Auth: {user.uid}")
+
+            # Remove do Firestore
+            self.users_ref.document(user.uid).delete()
+            print(f"✅ Usuário removido do Firestore: {user.uid}")
+
+            # NOTA: Licença não é liberada automaticamente
+            print("⚠️ Licença precisa ser resetada manualmente no Firebase")
+
+        except auth.UserNotFoundError:
+            print("❌ Usuário não encontrado no Auth")
+        except Exception as e:
+            print(f"❌ Erro na limpeza: {e}")
+
     def get_user_info(self, email: str) -> Optional[Dict[str, Any]]:
         """Busca informações do usuário"""
         try:
             user_docs = self.users_ref.where('email', '==', email).limit(1).get()
-            
+
             for doc in user_docs:
                 user_data = doc.to_dict()
                 return user_data
-                
+
             return None
-            
+
         except Exception as e:
             print(f"Erro ao buscar usuário: {e}")
             return None
