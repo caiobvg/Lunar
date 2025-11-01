@@ -13,6 +13,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from cleaners.system_cleaner import SystemCleaner
 from utils.hardware_reader import HardwareReader
 from utils.logger import logger
+from utils.icon_manager import IconManager
 from spoofers.mac_spoofer.mac_spoofer import MACSpoofer
 from spoofers.mac_spoofer.select_network import InterfaceSelectionDialog
 from .components.particles import ParticleSystem
@@ -24,14 +25,18 @@ from controllers.spoofer_controller import SpoofingController
 
 
 class MidnightSpooferGUI:
-    def __init__(self, spoofer_controller):
+    def __init__(self, spoofer_controller, icon_path=None):
         self.root = ctk.CTk()
         self.root.title("Midnight Spoofer Beta")
         self.root.geometry("1400x900")
         self.root.resizable(True, True)
         self.root.configure(fg_color="#0a0a1a")
-        
+
+        self.icon_path = icon_path
         self.center_window()
+
+        # Set icon immediately and with delays
+        self.set_window_icon()
         
         self.controller = spoofer_controller
         
@@ -192,6 +197,120 @@ class MidnightSpooferGUI:
         x = (self.root.winfo_screenwidth() // 2) - (width // 2)
         y = (self.root.winfo_screenheight() // 2) - (height // 2)
         self.root.geometry(f'{width}x{height}+{x}+{y}')
+
+    def set_window_icon(self):
+        """Set window icon with multiple strategies"""
+        if not self.icon_path or not os.path.exists(self.icon_path):
+            logger.log_warning("Icon path not available for main window", "UI")
+            return
+
+        try:
+            # Immediate attempt
+            self._set_icon_immediate()
+
+            # Delayed attempts for when window is fully ready
+            delayed_attempts = [100, 500, 1000, 2000]
+            for delay in delayed_attempts:
+                self.root.after(delay, self._set_icon_delayed)
+
+        except Exception as e:
+            logger.log_error(f"Main window icon setup failed: {str(e)}", "UI")
+
+    def _set_icon_immediate(self):
+        """Immediate icon setting attempt"""
+        try:
+            self.root.iconbitmap(self.icon_path)
+            logger.log_info("Main window icon set (immediate)", "UI")
+        except Exception as e:
+            logger.log_error(f"Immediate icon set failed: {str(e)}", "UI")
+
+    def _set_icon_delayed(self):
+        """Delayed icon setting attempts"""
+        try:
+            if hasattr(self, 'root') and self.root.winfo_exists():
+                self.root.iconbitmap(self.icon_path)
+
+                # Also try Windows API
+                self._set_icon_windows_api()
+
+        except Exception as e:
+            logger.log_error(f"Delayed icon set failed: {str(e)}", "UI")
+
+    def _set_icon_windows_api(self):
+        """Windows API method for taskbar icon"""
+        try:
+            if os.name == 'nt':
+                import ctypes
+                from ctypes import wintypes
+
+                # Get window handle
+                hwnd = ctypes.windll.user32.GetParent(self.root.winfo_id())
+
+                # Force window to appear in taskbar
+                GWL_EXSTYLE = -20
+                WS_EX_APPWINDOW = 0x00040000
+                style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+                ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style | WS_EX_APPWINDOW)
+
+                # Load and set icon
+                ICON_BIG = 1
+                LR_LOADFROMFILE = 0x00000010
+
+                icon_handle = ctypes.windll.user32.LoadImageW(
+                    0, self.icon_path, 1, 32, 32, LR_LOADFROMFILE
+                )
+
+                if icon_handle:
+                    WM_SETICON = 0x0080
+                    ctypes.windll.user32.SendMessageW(hwnd, WM_SETICON, ICON_BIG, icon_handle)
+
+                    # Also set small icon
+                    ICON_SMALL = 0
+                    icon_small_handle = ctypes.windll.user32.LoadImageW(
+                        0, self.icon_path, 1, 16, 16, LR_LOADFROMFILE
+                    )
+                    if icon_small_handle:
+                        ctypes.windll.user32.SendMessageW(hwnd, WM_SETICON, ICON_SMALL, icon_small_handle)
+
+                    logger.log_info("Main window icon set (Windows API)", "UI")
+
+        except Exception as e:
+            logger.log_error(f"Windows API icon set failed: {str(e)}", "UI")
+
+    def force_taskbar_icon(self, icon_path):
+        """Force set taskbar icon using Windows API"""
+        try:
+            if os.name == 'nt':
+                import ctypes
+                from ctypes import wintypes
+
+                # Obter handle da janela
+                hwnd = ctypes.windll.user32.GetParent(self.root.winfo_id())
+
+                # Carregar ícone do arquivo
+                ICON_BIG = 1
+                ICON_SMALL = 0
+                LR_LOADFROMFILE = 0x00000010
+                LR_DEFAULTSIZE = 0x00000040
+
+                # Carregar ícone em diferentes tamanhos
+                icon_big = ctypes.windll.user32.LoadImageW(
+                    0, icon_path, 1, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE
+                )
+
+                icon_small = ctypes.windll.user32.LoadImageW(
+                    0, icon_path, 1, 16, 16, LR_LOADFROMFILE
+                )
+
+                # Definir os ícones
+                WM_SETICON = 0x0080
+                if icon_big:
+                    ctypes.windll.user32.SendMessageW(hwnd, WM_SETICON, ICON_BIG, icon_big)
+                if icon_small:
+                    ctypes.windll.user32.SendMessageW(hwnd, WM_SETICON, ICON_SMALL, icon_small)
+
+        except Exception as e:
+            logger.log_error(f"Failed to force taskbar icon: {str(e)}", "UI")
 
     def add_log_ui(self, message):
         """Callback method for logger subscription - receives formatted messages"""

@@ -9,9 +9,10 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 class LoginApp:
-    def __init__(self):
+    def __init__(self, icon_path=None):
         self.auth = AuthSystemFirebase()
         self.current_user = None
+        self.icon_path = icon_path
         self.setup_login_window()
 
     def setup_login_window(self):
@@ -33,7 +34,78 @@ class LoginApp:
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
 
+        # Set icon
+        self.set_window_icon()
+
         self.create_login_frame()
+
+    def set_window_icon(self):
+        """Set window icon with multiple attempts"""
+        if not self.icon_path or not os.path.exists(self.icon_path):
+            print("Icon path not available for login window")
+            return
+
+        try:
+            # Multiple attempts with delays
+            attempts = [
+                (100, self._set_icon_attempt1),
+                (500, self._set_icon_attempt2),
+                (1000, self._set_icon_attempt3),
+            ]
+
+            for delay, method in attempts:
+                self.window.after(delay, method)
+
+        except Exception as e:
+            print(f"Icon setting failed: {e}")
+
+    def _set_icon_attempt1(self):
+        """First attempt: standard method"""
+        try:
+            self.window.iconbitmap(self.icon_path)
+            print("Login window icon set (attempt 1)")
+        except Exception as e:
+            print(f"Attempt 1 failed: {e}")
+
+    def _set_icon_attempt2(self):
+        """Second attempt: after window is fully loaded"""
+        try:
+            if hasattr(self, 'window') and self.window.winfo_exists():
+                self.window.iconbitmap(self.icon_path)
+                print("Login window icon set (attempt 2)")
+        except Exception as e:
+            print(f"Attempt 2 failed: {e}")
+
+    def _set_icon_attempt3(self):
+        """Third attempt: Windows API"""
+        try:
+            if os.name == 'nt' and hasattr(self, 'window'):
+                import ctypes
+                from ctypes import wintypes
+
+                hwnd = ctypes.windll.user32.GetParent(self.window.winfo_id())
+
+                # Ensure window appears in taskbar
+                GWL_EXSTYLE = -20
+                WS_EX_APPWINDOW = 0x00040000
+                style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+                ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style | WS_EX_APPWINDOW)
+
+                # Set icon
+                ICON_BIG = 1
+                LR_LOADFROMFILE = 0x00000010
+
+                icon_handle = ctypes.windll.user32.LoadImageW(
+                    0, self.icon_path, 1, 0, 0, LR_LOADFROMFILE
+                )
+
+                if icon_handle:
+                    WM_SETICON = 0x0080
+                    ctypes.windll.user32.SendMessageW(hwnd, WM_SETICON, ICON_BIG, icon_handle)
+                    print("Login window icon set (attempt 3 - Windows API)")
+
+        except Exception as e:
+            print(f"Attempt 3 failed: {e}")
 
     def create_login_frame(self):
         """Create the main login interface"""
@@ -520,7 +592,7 @@ class LoginApp:
             )
 
             # Start main GUI
-            app = MidnightSpooferGUI(spoofer_controller)
+            app = MidnightSpooferGUI(spoofer_controller, icon_path=self.icon_path)
             app.run()
 
         except Exception as e:

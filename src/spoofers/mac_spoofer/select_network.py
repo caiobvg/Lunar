@@ -1,6 +1,7 @@
 # src/spoofers/mac_spoofer/select_network.py
 
 import customtkinter as ctk
+import os
 
 class InterfaceSelectionDialog:
     def __init__(self, parent, mac_spoofer):
@@ -16,6 +17,9 @@ class InterfaceSelectionDialog:
         self.selected_vendor = None
         self.new_mac = None
         self.interface_buttons = []
+
+        # Definir ícone
+        self.set_window_icon()
 
         self.setup_ui()
 
@@ -126,6 +130,15 @@ class InterfaceSelectionDialog:
             corner_radius=8
         )
         self.ok_btn.pack(side="left", expand=True, padx=(10, 0))
+
+    def set_window_icon(self):
+        """Set icon for dialog window"""
+        try:
+            icon_path = 'app.ico'
+            if os.path.exists(icon_path):
+                self.dialog.iconbitmap(icon_path)
+        except Exception as e:
+            print(f"Failed to set dialog icon: {e}")
 
     def select_interface(self, interface, selected_button):
         self.selected_interface = interface['name']

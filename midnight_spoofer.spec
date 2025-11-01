@@ -12,6 +12,7 @@ a = Analysis(
     binaries=[],
     datas=[
         ('firebase-key.json', '.'),  # Include Firebase key file
+        ('app.ico', '.'),  # Include icon file
         ('src', 'src'),  # Include entire src directory
         ('license', 'license'),  # Include license directory
     ],
@@ -74,5 +75,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='favicon.ico',
+    icon='app.ico',
+    version_file='version_info.txt',  # Add version information
 )
