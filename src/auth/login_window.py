@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
 import customtkinter as ctk
-from .auth_system import AuthSystem
+from .auth_system_firebase import AuthSystemFirebase
 import sys
 import os
 
@@ -10,7 +10,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 class LoginApp:
     def __init__(self):
-        self.auth = AuthSystem()
+        self.auth = AuthSystemFirebase()
         self.current_user = None
         self.setup_login_window()
 
@@ -66,7 +66,7 @@ class LoginApp:
         # Username field
         self.username_entry = ctk.CTkEntry(
             self.login_container,
-            placeholder_text="Username or Email",
+            placeholder_text="Email",
             width=300,
             height=45,
             font=ctk.CTkFont(size=14)

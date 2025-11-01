@@ -19,3 +19,5 @@ Thumbs.db
 
 # Backups
 registry_backups/
+
+license_generator_firebase.py

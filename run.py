@@ -4,6 +4,7 @@ from tkinter import messagebox
 import customtkinter as ctk
 import sys
 import os
+from src.auth.auth_system_firebase import AuthSystemFirebase as AuthSystem
 
 # Add src to path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
