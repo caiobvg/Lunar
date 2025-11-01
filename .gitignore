@@ -9,9 +9,6 @@ midnight_log.txt
 projeto_completo.txt
 *.log
 
-# Scripts
-script.py
-
 # IDE
 .vscode/
 .idea/
