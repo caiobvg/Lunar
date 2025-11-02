@@ -19,7 +19,8 @@ class Sidebar(QFrame):
 
         # Layout principal
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        # ALTERADO (Left, Top, Right, Bottom) de (0, 0, 0, 0) para (0, 30, 0, 0)
+        layout.setContentsMargins(0, 25, 0, 0)
         layout.setSpacing(0)
 
         # Header removido (agora está no HeaderBar)

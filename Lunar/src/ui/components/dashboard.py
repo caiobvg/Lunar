@@ -56,8 +56,10 @@ class Dashboard(QFrame):
         h = self.height()
 
         panel_height = 60
-        panel_margin_top = 20 # de 30 para 20 (subiu)
-        content_margin_top = 110 # de 110 para 100 (subiu)
+        # ALTERADO DE 20 PARA 30 (para alinhar com os ícones do header)
+        panel_margin_top = 30
+        # ALTERADO DE 110 PARA 120 (para descer o conteúdo)
+        content_margin_top = 120
 
         # Posiciona o painel de hardware no topo e centro
         if hasattr(self, 'hardware_panel'):
