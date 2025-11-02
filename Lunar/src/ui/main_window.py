@@ -1,13 +1,14 @@
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout,
-                              QHBoxLayout, QStatusBar, QMessageBox, QLabel, QFrame)
+                              QHBoxLayout, QStatusBar, QMessageBox, QLabel, QFrame,
+                              QPushButton)
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QFont, QPalette, QColor
+from PySide6.QtGui import QFont, QPalette, QColor, QIcon, QPixmap
 import os
 
 from src.ui.components.sidebar import Sidebar
 from src.ui.components.dashboard import Dashboard
 from src.ui.components.particles import ParticleSystem
-from src.ui.components.header_bar import HeaderBar
+# from src.ui.components.header_bar import HeaderBar # REMOVED
 import traceback
 
 class MainWindow(QMainWindow):
@@ -68,16 +69,7 @@ class MainWindow(QMainWindow):
         # Sistema de partículas como overlay transparente - FUNDO
         self.particle_system = ParticleSystem(central_widget)
 
-        # HeaderBar no topo
-        self.header_bar = HeaderBar(central_widget)
-        # main_layout.addWidget(self.header_bar)
-
-        # Área de conteúdo (sidebar + conteúdo) - (REMOVIDO)
-        # content_area = QFrame()
-        # content_area.setObjectName("contentArea")
-        # content_layout = QHBoxLayout(content_area)
-        # content_layout.setContentsMargins(0, 0, 0, 0)
-        # content_layout.setSpacing(0)
+        # HeaderBar REMOVED
 
         # Área de conteúdo principal
         self.content_stack = QFrame(central_widget)
@@ -90,13 +82,18 @@ class MainWindow(QMainWindow):
         self.dashboard = Dashboard(self.controller)
         content_stack_layout.addWidget(self.dashboard)
 
-        # content_layout.addWidget(self.content_stack)
-
         # Sidebar (CAMADA SUPERIOR)
         self.sidebar = Sidebar(central_widget)
-        # content_layout.addWidget(self.sidebar)
 
-        # main_layout.addWidget(content_area)
+        # Floating buttons (header buttons moved here)
+        self.message_btn = self.create_icon_button("message.png", "Messages")
+        self.message_btn.setParent(central_widget)
+
+        self.notification_btn = self.create_icon_button("no_notification.png", "Notifications")
+        self.notification_btn.setParent(central_widget)
+
+        self.user_widget = self.create_user_widget()
+        self.user_widget.setParent(central_widget)
 
         # Barra de status
         self.setup_status_bar()
@@ -154,23 +151,15 @@ class MainWindow(QMainWindow):
             self.particle_system.setGeometry(0, 0, w, h)
             self.particle_system.lower()
 
-        # 2. Header
-        if hasattr(self, 'header_bar'):
-            # Pega a altura fixa (80)
-            header_height = self.header_bar.height()
-            self.header_bar.setGeometry(0, 0, w, header_height)
-
-        # 3. Content Stack (atrás da sidebar, abaixo do header)
+        # 2. Content Stack (starts at top now, behind sidebar)
         if hasattr(self, 'content_stack'):
-            if hasattr(self, 'sidebar') and hasattr(self, 'header_bar'):
-                sidebar_width = self.sidebar.width() # Pega a largura fixa (150)
-                header_height = self.header_bar.height()
-
+            if hasattr(self, 'sidebar'):
+                sidebar_width = self.sidebar.width()
                 self.content_stack.setGeometry(
                     sidebar_width,
-                    header_height,
+                    0,  # Starts at Y=0
                     w - sidebar_width,
-                    h - header_height
+                    h  # Occupies full height
                 )
             else:
                 self.content_stack.setGeometry(0, 0, w, h)
@@ -181,6 +170,67 @@ class MainWindow(QMainWindow):
             # A sidebar começa em (0, 0) e ocupa a altura total
             self.sidebar.setGeometry(0, 0, sidebar_width, h)
             self.sidebar.raise_() # Coloca a sidebar no topo
+
+        # 5. Floating buttons (positioned in top-right corner)
+        margin = 30
+        spacing = 15
+
+        if hasattr(self, 'user_widget'):
+            user_width = self.user_widget.width()
+            self.user_widget.setGeometry(w - user_width - margin, margin, user_width, 40)
+            self.user_widget.raise_()
+
+            if hasattr(self, 'notification_btn'):
+                self.notification_btn.setGeometry(w - user_width - margin - 32 - spacing, margin + 4, 32, 32)
+                self.notification_btn.raise_()
+
+                if hasattr(self, 'message_btn'):
+                    self.message_btn.setGeometry(w - user_width - margin - 32 - spacing - 32 - spacing, margin + 4, 32, 32)
+                    self.message_btn.raise_()
+
+    # Methods moved from header_bar.py
+
+    def create_icon_button(self, icon_filename, tooltip):
+        btn = QPushButton()
+        btn.setObjectName("iconButton")  # CSS will still work
+        btn.setFixedSize(32, 32)
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.setToolTip(tooltip)
+
+        icon_path = os.path.join(os.path.dirname(__file__), '..', '..', 'assets', 'icons', icon_filename)
+
+        if not os.path.exists(icon_path):
+           icon_path = os.path.join(os.path.dirname(__file__), '..', 'icons', icon_filename)
+
+        if os.path.exists(icon_path):
+            pixmap = QPixmap(icon_path)
+            pixmap = pixmap.scaled(24, 24, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            btn.setIcon(QIcon(pixmap))
+            btn.setIconSize(pixmap.size())
+        else:
+            print(f"Ícone não encontrado: {icon_path}")
+            btn.setText("📧" if "message" in icon_filename else "🔔")
+        return btn
+
+    def create_user_widget(self):
+        widget = QFrame()
+        widget.setObjectName("userWidget")  # CSS will still work
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setSpacing(2)
+
+        user_label = QLabel("User")
+        user_label.setObjectName("userLabel")
+        user_label.setFont(QFont("Segoe UI", 12, QFont.Bold))
+
+        role_label = QLabel("Administrator")
+        role_label.setObjectName("roleLabel")
+        role_label.setFont(QFont("Segoe UI", 9))
+
+        layout.addWidget(user_label)
+        layout.addWidget(role_label)
+        widget.setFixedSize(widget.sizeHint())  # Define fixed size
+        return widget
 
     def initialize_particles(self):
         """Inicializa e posiciona o sistema de partículas"""

@@ -2,7 +2,11 @@ from PySide6.QtWidgets import (QFrame, QVBoxLayout, QHBoxLayout, QLabel,
                               QPushButton, QGridLayout, QWidget)
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont
-import psutil
+# import psutil # REMOVED (now in hardware_reader)
+
+# NEW IMPORTS
+from src.utils.hardware_reader import HardwareReader
+from src.ui.components.hardware_graphs import MiniGraphWidget
 
 from src.ui.components.switch import SwitchButton
 
@@ -15,25 +19,62 @@ class Dashboard(QFrame):
             "guid": False,
             "hwid": False
         }
+
+        # Instantiate the reader
+        self.hw_reader = HardwareReader()
+
         self.setup_ui()
         self.setup_timers()
 
     def setup_ui(self):
-        """Configura dashboard com hardware stats acima do spoofing"""
+        """Configura dashboard com hardware stats ACIMA e flutuante"""
         self.setObjectName("dashboard")
 
-        # Layout principal
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(30, 20, 30, 20)
-        main_layout.setSpacing(25)
+        # Layout principal REMOVIDO
+        # main_layout = QVBoxLayout(self)
+        # main_layout.setContentsMargins(30, 20, 30, 20)
+        # main_layout.setSpacing(25)
+        self.setLayout(None) # Define layout nulo para posicionamento manual
 
-        # Painel de hardware (novo)
-        hardware_panel = self.create_hardware_panel()
-        main_layout.addWidget(hardware_panel)
+        # Painel de hardware (agora flutuante)
+        self.hardware_panel = self.create_hardware_panel()
+        self.hardware_panel.setParent(self) # Define o parent
+        # main_layout.addWidget(hardware_panel) # REMOVIDO
 
         # Área de conteúdo principal
-        content_area = self.create_content_area()
-        main_layout.addWidget(content_area)
+        self.content_area = self.create_content_area()
+        self.content_area.setParent(self) # Define o parent
+        # main_layout.addWidget(content_area) # REMOVIDO
+
+    def resizeEvent(self, event):
+        """Posiciona os painéis manualmente"""
+        super().resizeEvent(event)
+        w = self.width()
+        h = self.height()
+
+        panel_height = 60
+        panel_margin_top = 20 # de 30 para 20 (subiu)
+        content_margin_top = 110 # de 110 para 100 (subiu)
+
+        # Posiciona o painel de hardware no topo e centro
+        if hasattr(self, 'hardware_panel'):
+            panel_width = self.hardware_panel.width() # 600px fixo
+            self.hardware_panel.setGeometry(
+                30,  # Alinhado à esquerda com o conteúdo
+                panel_margin_top,        # Margem do topo
+                panel_width,
+                panel_height
+            )
+            self.hardware_panel.raise_()
+
+        # Posiciona a área de conteúdo abaixo do painel
+        if hasattr(self, 'content_area'):
+            self.content_area.setGeometry(
+                30, # Margem esquerda
+                content_margin_top,
+                w - 60, # Margem esquerda/direita
+                h - content_margin_top - 20 # Margem topo/baixo
+            )
 
     def create_content_area(self):
         """Cria área de conteúdo principal"""
@@ -55,57 +96,87 @@ class Dashboard(QFrame):
         return content_frame
 
     def create_hardware_panel(self):
-        """Cria painel de informações de hardware"""
+        """Cria painel de informações de hardware (Estilo Pill)"""
         hardware_frame = QFrame()
-        hardware_frame.setObjectName("hardwarePanel")
-        hardware_frame.setFixedHeight(100)
+        # [ALTERADO] Novo objectName para o CSS
+        hardware_frame.setObjectName("pillHardwarePanel")
+        hardware_frame.setFixedHeight(60) # de 80 para 60
+        hardware_frame.setFixedWidth(900) # de 600 para 900
 
         layout = QHBoxLayout(hardware_frame)
-        layout.setContentsMargins(20, 15, 20, 15)
-        layout.setSpacing(25)
+        layout.setContentsMargins(20, 7, 20, 3) # Margens (esquerda/direita 20)
+        layout.setSpacing(10) # Espaçamento reduzido
 
-        # Stats de hardware
-        self.cpu_stat = self.create_hardware_stat("CPU", "0%", "#50E3C2")
-        self.memory_stat = self.create_hardware_stat("MEMORY", "0%", "#4A90E2")
-        self.disk_stat = self.create_hardware_stat("DISK", "0%", "#B8E986")
-        self.status_stat = self.create_hardware_stat("STATUS", "READY", "#FF6B6B")
+        # Stats de hardware (com gráficos)
+        self.cpu_stat = self.create_hardware_stat("CPU", "0%", "#50E3C2", show_graph=True)
+        self.memory_stat = self.create_hardware_stat("MEMORY", "0%", "#4A90E2", show_graph=True)
+        self.disk_stat = self.create_hardware_stat("DISK", "0%", "#B8E986", show_graph=True)
+        self.status_stat = self.create_hardware_stat("STATUS", "READY", "#FF6B6B", show_graph=False)
 
         layout.addWidget(self.cpu_stat)
+        layout.addStretch(1) # Espaçador
         layout.addWidget(self.memory_stat)
+        layout.addStretch(1) # Espaçador
         layout.addWidget(self.disk_stat)
+        layout.addStretch(1) # Espaçador
         layout.addWidget(self.status_stat)
-        layout.addStretch(1)
 
         return hardware_frame
 
-    def create_hardware_stat(self, title, value, color):
-        """Cria widget individual de stat de hardware"""
-        widget = QFrame()
-        widget.setObjectName("hardwareStat")
-        widget.setFixedSize(120, 70)
+    def create_hardware_stat(self, title, value, color, show_graph=True):
+        """Cria widget de stat (Texto + Gráfico Opcional)"""
 
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(0, 8, 0, 8)
-        layout.setSpacing(4)
-        layout.setAlignment(Qt.AlignCenter)
+        # Widget principal (Stat + Gráfico)
+        main_widget = QFrame()
+        main_layout = QHBoxLayout(main_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(10)
+
+        # Widget de Texto (Título + Valor)
+        text_widget = QFrame()
+        text_layout = QVBoxLayout(text_widget)
+        text_layout.setContentsMargins(0, 0, 0, 0)
+        text_layout.setSpacing(4)
+        text_layout.setAlignment(Qt.AlignCenter)
+        text_widget.setFixedWidth(80) # Largura fixa para o texto
 
         title_label = QLabel(title)
         title_label.setObjectName("hardwareTitle")
         title_label.setFont(QFont("Segoe UI", 10, QFont.Medium))
-        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
         value_label = QLabel(value)
         value_label.setObjectName("hardwareValue")
         value_label.setFont(QFont("Segoe UI", 16, QFont.Bold))
-        value_label.setAlignment(Qt.AlignCenter)
-        
-        # Aplicar cor diretamente via estilo
+        value_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         value_label.setStyleSheet(f"color: {color}; background: transparent;")
 
-        layout.addWidget(title_label)
-        layout.addWidget(value_label)
+        text_layout.addWidget(title_label)
+        text_layout.addWidget(value_label)
 
-        return widget
+        main_layout.addWidget(text_widget) # Adiciona texto à esquerda
+
+        # Gráfico (Direita)
+        if show_graph:
+            graph_widget = MiniGraphWidget()
+            graph_widget.set_color(color)
+            main_layout.addWidget(graph_widget) # Adiciona gráfico à direita
+
+            # Armazenar referência ao gráfico
+            if title == "CPU":
+                self.cpu_graph = graph_widget
+            elif title == "MEMORY":
+                self.memory_graph = graph_widget
+            elif title == "DISK":
+                self.disk_graph = graph_widget
+
+            # (80px texto + 10px espaço + 100px gráfico)
+            main_widget.setFixedSize(190, 50)
+        else:
+            # Se não houver gráfico, o tamanho é menor
+            main_widget.setFixedSize(90, 50)
+
+        return main_widget
 
     def create_action_panel(self):
         """Cria painel de ações principal"""
@@ -231,8 +302,10 @@ class Dashboard(QFrame):
         """Configura timers para atualização em tempo real"""
         self.stats_timer = QTimer()
         self.stats_timer.timeout.connect(self.update_hardware_stats)
-        self.stats_timer.start(2000)
-        self.update_hardware_stats()
+        # Atualização mais rápida para o gráfico
+        self.stats_timer.start(1000) # 1 segundo
+        # A primeira chamada deve ser do timer, após 1s.
+        # self.update_hardware_stats()
 
     def on_spoof_button_click(self):
         """Handler do botão de spoofing"""
@@ -259,26 +332,27 @@ class Dashboard(QFrame):
         QTimer.singleShot(2000, lambda: self.spoof_status.setText("System ready for spoofing protocol"))
 
     def update_hardware_stats(self):
-        """Atualiza as estatísticas de hardware"""
+        """Atualiza as estatísticas de hardware e os gráficos"""
         try:
-            # CPU
-            cpu_percent = psutil.cpu_percent(interval=0.1)
+            # Buscar dados do Reader
+            cpu_percent = self.hw_reader.get_cpu_percent()
+            memory_percent = self.hw_reader.get_memory_percent()
+            disk_percent = self.hw_reader.get_disk_percent()
+
+            # Atualizar Labels
             self.cpu_stat.findChild(QLabel, "hardwareValue").setText(f"{cpu_percent:.0f}%")
-
-            # Memória
-            memory = psutil.virtual_memory()
-            memory_percent = memory.percent
             self.memory_stat.findChild(QLabel, "hardwareValue").setText(f"{memory_percent:.0f}%")
+            self.disk_stat.findChild(QLabel, "hardwareValue").setText(f"{disk_percent:.0f}%")
 
-            # Disco
-            try:
-                disk = psutil.disk_usage('C:')
-                disk_percent = disk.percent
-                self.disk_stat.findChild(QLabel, "hardwareValue").setText(f"{disk_percent:.0f}%")
-            except:
-                self.disk_stat.findChild(QLabel, "hardwareValue").setText("N/A")
+            # Atualizar Gráficos
+            if hasattr(self, 'cpu_graph'):
+                self.cpu_graph.add_data_point(cpu_percent)
+            if hasattr(self, 'memory_graph'):
+                self.memory_graph.add_data_point(memory_percent)
+            if hasattr(self, 'disk_graph'):
+                self.disk_graph.add_data_point(disk_percent)
 
-            # Status baseado na CPU
+            # Atualizar Status
             if cpu_percent > 80:
                 self.status_stat.findChild(QLabel, "hardwareValue").setText("HIGH LOAD")
                 self.status_stat.findChild(QLabel, "hardwareValue").setStyleSheet("color: #FF6B6B;")

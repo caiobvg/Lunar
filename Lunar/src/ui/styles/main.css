@@ -27,37 +27,8 @@ QWidget {
     border: none;
 }
 
-/* ===== HEADER BAR - SEMI-TRANSPARENTE PARA VER PARTÍCULAS ===== */
-#headerBar {
-    background: rgba(30, 30, 30, 0.6);
-    border-bottom: 2px solid rgba(20, 20, 20, 0.5);
-    outline: none;
-}
-
-#logoSection {
-    background: transparent;
-    border: none;
-}
-
-#headerTitle {
-    color: #ffffff;
-    background: transparent;
-    font-size: 16px;
-    font-weight: bold;
-    letter-spacing: 0.5px;
-}
-
-#headerSubtitle {
-    color: #cccccc;
-    background: transparent;
-    font-size: 10px;
-    letter-spacing: 1px;
-}
-
-#buttonsSection {
-    background: transparent;
-    border: none;
-}
+/* ===== HEADER BAR - REMOVED ===== */
+/* The #iconButton and #userWidget styles still work */
 
 /* BOTÕES DO HEADER - SEM FUNDO (APENAS HOVER) */
 #iconButton {
@@ -97,7 +68,8 @@ QWidget {
 
 /* ===== SIDEBAR - SEMI-TRANSPARENTE PARA VER PARTÍCULAS ===== */
 #sidebar {
-    background: rgba(30, 30, 30, 0);
+    background: rgba(30, 30, 30, 0.6);
+    border-right: 2px solid rgba(20, 20, 20, 0.5);
 }
 
 #navFrame {
@@ -131,7 +103,7 @@ QPushButton[navButton][active="true"] {
 
 #footerFrame {
     background: rgba(30, 30, 30, 0.6);
-    border-top: 2px transparent rgb(20, 20, 20, 0.5);
+    border-top: 2px solid rgba(20, 20, 20, 0.5);
 }
 
 #statusLabel {
@@ -158,6 +130,13 @@ QPushButton[navButton][active="true"] {
     border-radius: 12px;
 }
 
+/* ===== PAINEL DE HARDWARE (PILL) ===== */
+#pillHardwarePanel {
+    background: rgba(30, 30, 30, 0.9);
+    border: 1px solid #2a2a2a;
+    border-radius: 30px;
+}
+
 #hardwareStat {
     background: transparent;
     border: none;
@@ -176,11 +155,6 @@ QPushButton[navButton][active="true"] {
     background: transparent;
     font-size: 16px;
     font-weight: bold;
-}
-
-/* CORES ESPECÍFICAS PARA OS VALORES DE HARDWARE */
-#hardwareStat QLabel[objectName="hardwareValue"] {
-    background: transparent;
 }
 
 /* ===== PAINEL DE AÇÕES ===== */
