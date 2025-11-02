@@ -26,6 +26,9 @@ class ParticleSystem(QWidget):
         self.timer.start(33)  # ~30 FPS
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
 
+        # Garantir que fique atrás de outros widgets
+        self.lower()
+
         # Inicializar partículas apenas quando o widget for mostrado
         self.initialized = False
 

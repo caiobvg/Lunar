@@ -97,6 +97,7 @@ class MainWindow(QMainWindow):
         # Sistema de partículas como fundo - CORRIGIDO
         # Agora o ParticleSystem é filho do central_widget e se expande
         self.particle_system = ParticleSystem(central_widget)
+        self.particle_system.lower()  # Coloca atrás de todos os widgets
 
         # Barra de status
         self.setup_status_bar()

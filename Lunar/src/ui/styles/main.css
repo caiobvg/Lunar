@@ -292,30 +292,8 @@ QScrollBar::handle:vertical:hover {
     background: #444444;
 }
 
-/* Sistema de partículas */
+/* Sistema de partículas - CORREÇÃO */
 ParticleSystem {
     background: transparent;
     border: none;
-}
-
-/* Garantir que as partículas fiquem atrás do conteúdo */
-#centralWidget {
-    position: relative;
-}
-
-ParticleSystem {
-    background: transparent;
-    border: none;
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: -1;
-}
-
-/* Ajustar z-index dos outros elementos */
-#headerBar, #sidebar, #contentStack {
-    position: relative;
-    z-index: 1;
 }
