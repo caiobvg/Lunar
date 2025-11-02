@@ -1,4 +1,4 @@
-# 🌙 Midnight Spoofer
+# Lunar Spoofer
 
 <div align="center">
 
@@ -12,7 +12,7 @@
 
 ## Overview
 
-**Midnight Spoofer** is a toolkit for controlling and minimizing a system's identifiable footprint. Intended for research, privacy testing, and controlled security assessments. **Legal warning:** for educational and research use only; misuse is the user's responsibility.
+**Lunar Spoofer** is a toolkit for controlling and minimizing a system's identifiable footprint. Intended for research, privacy testing, and controlled security assessments. **Legal warning:** for educational and research use only; misuse is the user's responsibility.
 
 ## Key Features (compact)
 
@@ -39,25 +39,6 @@
 
 > HWID and GUID spoofing modules are in active development.
 
-## Technology Summary
-
-- **Language:** Python 3.8+  
-- **System access:** WMI, psutil  
-- **Registry:** winreg with safety wrappers  
-- **Network commands:** netsh / PowerShell invocation  
-- **Process control & file ops:** psutil, standard libraries
-
-## Installation
-
-```bash
-git clone <repository-url>
-cd MidnightSpoofer
-pip install -r requirements.txt
-```
-## Run
-```bash
-python run.py
-```
 > ⚠️ For full functionality run the shell as Administrator.
 
 Permitted: academic research, controlled security testing, privacy research.

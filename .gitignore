@@ -9,6 +9,9 @@ midnight_log.txt
 projeto_completo.txt
 *.log
 
+legacy/
+Lunar/
+
 # IDE
 .vscode/
 .idea/
