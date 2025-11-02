@@ -355,15 +355,16 @@ class Config:
 # src\ui\main_window.py
 
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout,
-                              QHBoxLayout, QStatusBar, QMessageBox, QLabel, QFrame)
+                              QHBoxLayout, QStatusBar, QMessageBox, QLabel, QFrame,
+                              QPushButton)
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QFont, QPalette, QColor
+from PySide6.QtGui import QFont, QPalette, QColor, QIcon, QPixmap
 import os
 
 from src.ui.components.sidebar import Sidebar
 from src.ui.components.dashboard import Dashboard
 from src.ui.components.particles import ParticleSystem
-from src.ui.components.header_bar import HeaderBar
+# from src.ui.components.header_bar import HeaderBar # REMOVED
 import traceback
 
 class MainWindow(QMainWindow):
@@ -424,16 +425,7 @@ class MainWindow(QMainWindow):
         # Sistema de partículas como overlay transparente - FUNDO
         self.particle_system = ParticleSystem(central_widget)
 
-        # HeaderBar no topo
-        self.header_bar = HeaderBar(central_widget)
-        # main_layout.addWidget(self.header_bar)
-
-        # Área de conteúdo (sidebar + conteúdo) - (REMOVIDO)
-        # content_area = QFrame()
-        # content_area.setObjectName("contentArea")
-        # content_layout = QHBoxLayout(content_area)
-        # content_layout.setContentsMargins(0, 0, 0, 0)
-        # content_layout.setSpacing(0)
+        # HeaderBar REMOVED
 
         # Área de conteúdo principal
         self.content_stack = QFrame(central_widget)
@@ -446,19 +438,27 @@ class MainWindow(QMainWindow):
         self.dashboard = Dashboard(self.controller)
         content_stack_layout.addWidget(self.dashboard)
 
-        # content_layout.addWidget(self.content_stack)
-
         # Sidebar (CAMADA SUPERIOR)
         self.sidebar = Sidebar(central_widget)
-        # content_layout.addWidget(self.sidebar)
 
-        # main_layout.addWidget(content_area)
+        # Floating buttons (header buttons moved here)
+        self.message_btn = self.create_icon_button("message.png", "Messages")
+        self.message_btn.setParent(central_widget)
+
+        self.notification_btn = self.create_icon_button("no_notification.png", "Notifications")
+        self.notification_btn.setParent(central_widget)
+
+        self.user_widget = self.create_user_widget()
+        self.user_widget.setParent(central_widget)
 
         # Barra de status
         self.setup_status_bar()
 
         # Conectar navegação
         self.sidebar.navigation_changed.connect(self.on_navigation_changed)
+
+        # Chamar a lógica de posicionamento pela primeira vez
+        self.update_geometries()
 
     def on_navigation_changed(self, page_id):
         """Handler de navegação"""
@@ -495,7 +495,10 @@ class MainWindow(QMainWindow):
     def resizeEvent(self, event):
         """Gerencia a geometria dos componentes para sobreposição"""
         super().resizeEvent(event)
+        self.update_geometries()
 
+    def update_geometries(self):
+        """Posiciona os widgets manualmente para permitir sobreposição"""
         w = self.width()
         h = self.height()
 
@@ -504,23 +507,15 @@ class MainWindow(QMainWindow):
             self.particle_system.setGeometry(0, 0, w, h)
             self.particle_system.lower()
 
-        # 2. Header
-        if hasattr(self, 'header_bar'):
-            # Pega a altura fixa (80)
-            header_height = self.header_bar.height()
-            self.header_bar.setGeometry(0, 0, w, header_height)
-
-        # 3. Content Stack (atrás da sidebar, abaixo do header)
+        # 2. Content Stack (starts at top now, behind sidebar)
         if hasattr(self, 'content_stack'):
-            if hasattr(self, 'sidebar') and hasattr(self, 'header_bar'):
-                sidebar_width = self.sidebar.width() # Pega a largura fixa (150)
-                header_height = self.header_bar.height()
-                
+            if hasattr(self, 'sidebar'):
+                sidebar_width = self.sidebar.width()
                 self.content_stack.setGeometry(
-                    sidebar_width, 
-                    header_height, 
-                    w - sidebar_width, 
-                    h - header_height
+                    sidebar_width,
+                    0,  # Starts at Y=0
+                    w - sidebar_width,
+                    h  # Occupies full height
                 )
             else:
                 self.content_stack.setGeometry(0, 0, w, h)
@@ -531,6 +526,67 @@ class MainWindow(QMainWindow):
             # A sidebar começa em (0, 0) e ocupa a altura total
             self.sidebar.setGeometry(0, 0, sidebar_width, h)
             self.sidebar.raise_() # Coloca a sidebar no topo
+
+        # 5. Floating buttons (positioned in top-right corner)
+        margin = 30
+        spacing = 15
+
+        if hasattr(self, 'user_widget'):
+            user_width = self.user_widget.width()
+            self.user_widget.setGeometry(w - user_width - margin, margin, user_width, 40)
+            self.user_widget.raise_()
+
+            if hasattr(self, 'notification_btn'):
+                self.notification_btn.setGeometry(w - user_width - margin - 32 - spacing, margin + 4, 32, 32)
+                self.notification_btn.raise_()
+
+                if hasattr(self, 'message_btn'):
+                    self.message_btn.setGeometry(w - user_width - margin - 32 - spacing - 32 - spacing, margin + 4, 32, 32)
+                    self.message_btn.raise_()
+
+    # Methods moved from header_bar.py
+
+    def create_icon_button(self, icon_filename, tooltip):
+        btn = QPushButton()
+        btn.setObjectName("iconButton")  # CSS will still work
+        btn.setFixedSize(32, 32)
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.setToolTip(tooltip)
+
+        icon_path = os.path.join(os.path.dirname(__file__), '..', '..', 'assets', 'icons', icon_filename)
+
+        if not os.path.exists(icon_path):
+           icon_path = os.path.join(os.path.dirname(__file__), '..', 'icons', icon_filename)
+
+        if os.path.exists(icon_path):
+            pixmap = QPixmap(icon_path)
+            pixmap = pixmap.scaled(24, 24, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            btn.setIcon(QIcon(pixmap))
+            btn.setIconSize(pixmap.size())
+        else:
+            print(f"Ícone não encontrado: {icon_path}")
+            btn.setText("📧" if "message" in icon_filename else "🔔")
+        return btn
+
+    def create_user_widget(self):
+        widget = QFrame()
+        widget.setObjectName("userWidget")  # CSS will still work
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setSpacing(2)
+
+        user_label = QLabel("User")
+        user_label.setObjectName("userLabel")
+        user_label.setFont(QFont("Segoe UI", 12, QFont.Bold))
+
+        role_label = QLabel("Administrator")
+        role_label.setObjectName("roleLabel")
+        role_label.setFont(QFont("Segoe UI", 9))
+
+        layout.addWidget(user_label)
+        layout.addWidget(role_label)
+        widget.setFixedSize(widget.sizeHint())  # Define fixed size
+        return widget
 
     def initialize_particles(self):
         """Inicializa e posiciona o sistema de partículas"""
@@ -643,9 +699,16 @@ from PySide6.QtWidgets import (QFrame, QVBoxLayout, QHBoxLayout, QLabel,
                               QPushButton, QGridLayout, QWidget)
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont
-import psutil
+# import psutil # REMOVED (now in hardware_reader)
+
+# NEW IMPORTS
+from src.utils.hardware_reader import HardwareReader
+from src.ui.components.hardware_graphs import MiniGraphWidget
 
 from src.ui.components.switch import SwitchButton
+
+# NEW: Define a ceiling for the DISK graph (ex: 100 MB/s = 100%)
+DISK_GRAPH_MAX_MB_S = 100.0
 
 class Dashboard(QFrame):
     def __init__(self, controller=None):
@@ -656,25 +719,62 @@ class Dashboard(QFrame):
             "guid": False,
             "hwid": False
         }
+
+        # Instantiate the reader
+        self.hw_reader = HardwareReader()
+
         self.setup_ui()
         self.setup_timers()
 
     def setup_ui(self):
-        """Configura dashboard com hardware stats acima do spoofing"""
+        """Configura dashboard com hardware stats ACIMA e flutuante"""
         self.setObjectName("dashboard")
 
-        # Layout principal
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(30, 20, 30, 20)
-        main_layout.setSpacing(25)
+        # Layout principal REMOVIDO
+        # main_layout = QVBoxLayout(self)
+        # main_layout.setContentsMargins(30, 20, 30, 20)
+        # main_layout.setSpacing(25)
+        self.setLayout(None) # Define layout nulo para posicionamento manual
 
-        # Painel de hardware (novo)
-        hardware_panel = self.create_hardware_panel()
-        main_layout.addWidget(hardware_panel)
+        # Painel de hardware (agora flutuante)
+        self.hardware_panel = self.create_hardware_panel()
+        self.hardware_panel.setParent(self) # Define o parent
+        # main_layout.addWidget(hardware_panel) # REMOVIDO
 
         # Área de conteúdo principal
-        content_area = self.create_content_area()
-        main_layout.addWidget(content_area)
+        self.content_area = self.create_content_area()
+        self.content_area.setParent(self) # Define o parent
+        # main_layout.addWidget(content_area) # REMOVIDO
+
+    def resizeEvent(self, event):
+        """Posiciona os painéis manualmente"""
+        super().resizeEvent(event)
+        w = self.width()
+        h = self.height()
+
+        panel_height = 60
+        panel_margin_top = 20 # de 30 para 20 (subiu)
+        content_margin_top = 110 # de 110 para 100 (subiu)
+
+        # Posiciona o painel de hardware no topo e centro
+        if hasattr(self, 'hardware_panel'):
+            panel_width = self.hardware_panel.width() # 600px fixo
+            self.hardware_panel.setGeometry(
+                30,  # Alinhado à esquerda com o conteúdo
+                panel_margin_top,        # Margem do topo
+                panel_width,
+                panel_height
+            )
+            self.hardware_panel.raise_()
+
+        # Posiciona a área de conteúdo abaixo do painel
+        if hasattr(self, 'content_area'):
+            self.content_area.setGeometry(
+                30, # Margem esquerda
+                content_margin_top,
+                w - 60, # Margem esquerda/direita
+                h - content_margin_top - 20 # Margem topo/baixo
+            )
 
     def create_content_area(self):
         """Cria área de conteúdo principal"""
@@ -696,57 +796,87 @@ class Dashboard(QFrame):
         return content_frame
 
     def create_hardware_panel(self):
-        """Cria painel de informações de hardware"""
+        """Cria painel de informações de hardware (Estilo Pill)"""
         hardware_frame = QFrame()
-        hardware_frame.setObjectName("hardwarePanel")
-        hardware_frame.setFixedHeight(100)
+        # [ALTERADO] Novo objectName para o CSS
+        hardware_frame.setObjectName("pillHardwarePanel")
+        hardware_frame.setFixedHeight(60) # de 80 para 60
+        hardware_frame.setFixedWidth(900) # de 600 para 900
 
         layout = QHBoxLayout(hardware_frame)
-        layout.setContentsMargins(20, 15, 20, 15)
-        layout.setSpacing(25)
+        layout.setContentsMargins(20, 7, 20, 3) # Margens (esquerda/direita 20)
+        layout.setSpacing(10) # Espaçamento reduzido
 
-        # Stats de hardware
-        self.cpu_stat = self.create_hardware_stat("CPU", "0%", "#50E3C2")
-        self.memory_stat = self.create_hardware_stat("MEMORY", "0%", "#4A90E2")
-        self.disk_stat = self.create_hardware_stat("DISK", "0%", "#B8E986")
-        self.status_stat = self.create_hardware_stat("STATUS", "READY", "#FF6B6B")
+        # Stats de hardware (com gráficos)
+        self.cpu_stat = self.create_hardware_stat("CPU", "0%", "#50E3C2", show_graph=True)
+        self.memory_stat = self.create_hardware_stat("MEMORY", "0%", "#4A90E2", show_graph=True)
+        self.disk_stat = self.create_hardware_stat("DISK", "0 MB/s", "#B8E986", show_graph=True)
+        self.status_stat = self.create_hardware_stat("STATUS", "READY", "#FF6B6B", show_graph=False)
 
         layout.addWidget(self.cpu_stat)
+        layout.addStretch(1) # Espaçador
         layout.addWidget(self.memory_stat)
+        layout.addStretch(1) # Espaçador
         layout.addWidget(self.disk_stat)
+        layout.addStretch(1) # Espaçador
         layout.addWidget(self.status_stat)
-        layout.addStretch(1)
 
         return hardware_frame
 
-    def create_hardware_stat(self, title, value, color):
-        """Cria widget individual de stat de hardware"""
-        widget = QFrame()
-        widget.setObjectName("hardwareStat")
-        widget.setFixedSize(120, 70)
+    def create_hardware_stat(self, title, value, color, show_graph=True):
+        """Cria widget de stat (Texto + Gráfico Opcional)"""
 
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(0, 8, 0, 8)
-        layout.setSpacing(4)
-        layout.setAlignment(Qt.AlignCenter)
+        # Widget principal (Stat + Gráfico)
+        main_widget = QFrame()
+        main_layout = QHBoxLayout(main_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(10)
+
+        # Widget de Texto (Título + Valor)
+        text_widget = QFrame()
+        text_layout = QVBoxLayout(text_widget)
+        text_layout.setContentsMargins(0, 0, 0, 0)
+        text_layout.setSpacing(4)
+        text_layout.setAlignment(Qt.AlignCenter)
+        text_widget.setFixedWidth(80) # Largura fixa para o texto
 
         title_label = QLabel(title)
         title_label.setObjectName("hardwareTitle")
         title_label.setFont(QFont("Segoe UI", 10, QFont.Medium))
-        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
         value_label = QLabel(value)
         value_label.setObjectName("hardwareValue")
         value_label.setFont(QFont("Segoe UI", 16, QFont.Bold))
-        value_label.setAlignment(Qt.AlignCenter)
-        
-        # Aplicar cor diretamente via estilo
+        value_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         value_label.setStyleSheet(f"color: {color}; background: transparent;")
 
-        layout.addWidget(title_label)
-        layout.addWidget(value_label)
+        text_layout.addWidget(title_label)
+        text_layout.addWidget(value_label)
 
-        return widget
+        main_layout.addWidget(text_widget) # Adiciona texto à esquerda
+
+        # Gráfico (Direita)
+        if show_graph:
+            graph_widget = MiniGraphWidget()
+            graph_widget.set_color(color)
+            main_layout.addWidget(graph_widget) # Adiciona gráfico à direita
+
+            # Armazenar referência ao gráfico
+            if title == "CPU":
+                self.cpu_graph = graph_widget
+            elif title == "MEMORY":
+                self.memory_graph = graph_widget
+            elif title == "DISK":
+                self.disk_graph = graph_widget
+
+            # (80px texto + 10px espaço + 100px gráfico)
+            main_widget.setFixedSize(190, 50)
+        else:
+            # Se não houver gráfico, o tamanho é menor
+            main_widget.setFixedSize(90, 50)
+
+        return main_widget
 
     def create_action_panel(self):
         """Cria painel de ações principal"""
@@ -872,8 +1002,10 @@ class Dashboard(QFrame):
         """Configura timers para atualização em tempo real"""
         self.stats_timer = QTimer()
         self.stats_timer.timeout.connect(self.update_hardware_stats)
-        self.stats_timer.start(2000)
-        self.update_hardware_stats()
+        # Atualização mais rápida para o gráfico
+        self.stats_timer.start(1000) # 1 segundo
+        # A primeira chamada deve ser do timer, após 1s.
+        # self.update_hardware_stats()
 
     def on_spoof_button_click(self):
         """Handler do botão de spoofing"""
@@ -900,26 +1032,30 @@ class Dashboard(QFrame):
         QTimer.singleShot(2000, lambda: self.spoof_status.setText("System ready for spoofing protocol"))
 
     def update_hardware_stats(self):
-        """Atualiza as estatísticas de hardware"""
+        """Atualiza as estatísticas de hardware e os gráficos"""
         try:
-            # CPU
-            cpu_percent = psutil.cpu_percent(interval=0.1)
+            # Buscar dados do Reader
+            cpu_percent = self.hw_reader.get_cpu_percent()
+            memory_percent = self.hw_reader.get_memory_percent()
+            disk_mbs = self.hw_reader.get_disk_mbs() # CHANGED
+
+            # Atualizar Labels
             self.cpu_stat.findChild(QLabel, "hardwareValue").setText(f"{cpu_percent:.0f}%")
-
-            # Memória
-            memory = psutil.virtual_memory()
-            memory_percent = memory.percent
             self.memory_stat.findChild(QLabel, "hardwareValue").setText(f"{memory_percent:.0f}%")
+            # CHANGED: Format the disk label as MB/s
+            self.disk_stat.findChild(QLabel, "hardwareValue").setText(f"{disk_mbs:.0f} MB/s")
 
-            # Disco
-            try:
-                disk = psutil.disk_usage('C:')
-                disk_percent = disk.percent
-                self.disk_stat.findChild(QLabel, "hardwareValue").setText(f"{disk_percent:.0f}%")
-            except:
-                self.disk_stat.findChild(QLabel, "hardwareValue").setText("N/A")
+            # Atualizar Gráficos
+            if hasattr(self, 'cpu_graph'):
+                self.cpu_graph.add_data_point(cpu_percent)
+            if hasattr(self, 'memory_graph'):
+                self.memory_graph.add_data_point(memory_percent)
+            if hasattr(self, 'disk_graph'):
+                # CHANGED: Calculate the % for the graph
+                disk_percent_for_graph = (disk_mbs / DISK_GRAPH_MAX_MB_S) * 100.0
+                self.disk_graph.add_data_point(disk_percent_for_graph)
 
-            # Status baseado na CPU
+            # Atualizar Status
             if cpu_percent > 80:
                 self.status_stat.findChild(QLabel, "hardwareValue").setText("HIGH LOAD")
                 self.status_stat.findChild(QLabel, "hardwareValue").setStyleSheet("color: #FF6B6B;")
@@ -934,131 +1070,152 @@ class Dashboard(QFrame):
             print(f"Hardware stats update error: {e}")
 
 
+# src\ui\components\hardware_graphs.py
+
+# src/ui/components/hardware_graphs.py
+
+from PySide6.QtWidgets import QWidget
+from PySide6.QtCore import Qt, QPointF, QRectF
+from PySide6.QtGui import (QPainter, QColor, QBrush, QPolygonF,
+                           QLinearGradient, QRadialGradient, QImage) # [NOVO] QImage
+
+class MiniGraphWidget(QWidget):
+    def __init__(self, parent=None, max_points=30):
+        super().__init__(parent)
+        self.max_points = max_points
+        self.data_points = [0.0] * self.max_points
+        self.graph_color = QColor("#50E3C2") # Cor padrão
+        self.setFixedSize(100, 40)
+
+        # O "zoom" vertical mínimo que você sugeriu
+        self.MIN_VERTICAL_RANGE = 30
+
+    def set_color(self, color_hex):
+        """Define a cor principal do gráfico."""
+        self.graph_color = QColor(color_hex)
+        self.update()
+
+    def add_data_point(self, value):
+        """Adiciona um novo ponto de dado e atualiza o gráfico."""
+        if value < 0: value = 0
+        # if value > 100: value = 100  <-- [REMOVIDO]
+
+        self.data_points.append(value)
+
+        while len(self.data_points) > self.max_points:
+            self.data_points.pop(0)
+
+        self.update() # Solicita o redesenho
+
+    def paintEvent(self, event):
+        """Desenha o gráfico com scaling instantâneo E FADE NOS DOIS EIXOS."""
+        try:
+            painter = QPainter(self)
+            painter.setRenderHint(QPainter.Antialiasing)
+
+            w = self.width()
+            h = self.height()
+
+            if not self.data_points:
+                return
+
+            # --- 1. Lógica de Scaling Instantâneo (Baseado no último ponto) ---
+            current_value = self.data_points[-1]
+            half_range = self.MIN_VERTICAL_RANGE / 2.0
+            graph_min = current_value - half_range
+            graph_max = current_value + half_range
+
+            # --- 2. Clamping (Travar a escala apenas em 0) ---
+            if graph_min < 0.0:
+                overshoot = 0.0 - graph_min
+                graph_min = 0.0
+                graph_max += overshoot
+
+            # --- 3. Normalização e Cálculo do Polígono ---
+            current_range = graph_max - graph_min
+            if current_range < 0.01:
+                current_range = self.MIN_VERTICAL_RANGE
+
+            polygon = QPolygonF()
+            polygon.append(QPointF(0, h)) # Canto inferior esquerdo
+
+            line_polygon = QPolygonF() # Polígono apenas para a linha
+
+            step_x = w / (self.max_points - 1)
+
+            for i, value in enumerate(self.data_points):
+                normalized_y = (value - graph_min) / current_range
+
+                # Clamp de segurança
+                if normalized_y < 0.0: normalized_y = 0.0
+                if normalized_y > 1.0: normalized_y = 1.0
+
+                y = h - (normalized_y * h)
+                x = i * step_x
+
+                polygon.append(QPointF(x, y))
+                line_polygon.append(QPointF(x, y))
+
+            polygon.append(QPointF(w, h)) # Canto inferior direito
+
+            # Cores
+            solid_color = QColor(self.graph_color)
+            faded_color = QColor(self.graph_color)
+            faded_color.setAlphaF(0.0) # 0% opaco
+
+            # --- 4. [ALTERADO] Desenhar o Preenchimento (Fill) em um Buffer ---
+
+            # Criar buffer off-screen para aplicar os dois gradientes
+            buffer = QImage(self.size(), QImage.Format_ARGB32_Premultiplied)
+            buffer.fill(Qt.transparent)
+
+            buffer_painter = QPainter(buffer)
+            buffer_painter.setRenderHint(QPainter.Antialiasing)
+
+            # Etapa 1: Gradiente Vertical (de cima para baixo)
+            v_grad = QLinearGradient(0, 0, 0, h)
+            v_grad.setColorAt(0.0, solid_color.lighter(120)) # Cor no topo
+            v_grad.setColorAt(1.0, faded_color) # Transparente embaixo
+
+            buffer_painter.setPen(Qt.NoPen)
+            buffer_painter.setBrush(v_grad)
+            buffer_painter.drawPolygon(polygon)
+
+            # **ETAPA 2: APLICAR FADE "EIXO X" (Esquerda E Direita)**
+            buffer_painter.setCompositionMode(QPainter.CompositionMode_DestinationIn)
+
+            h_grad_mask = QLinearGradient(0, 0, w, 0)
+            h_grad_mask.setColorAt(0.0, QColor(0,0,0,0))   # Esquerda = Transparente
+            h_grad_mask.setColorAt(0.8, QColor(0,0,0,255)) # 80% = Opaco (Foco)
+            h_grad_mask.setColorAt(1.0, QColor(0,0,0,0))   # Direita = Transparente
+
+            buffer_painter.fillRect(self.rect(), h_grad_mask)
+            buffer_painter.end()
+
+            # --- 5. Desenhar o Buffer na Tela ---
+            painter.drawImage(0, 0, buffer)
+
+            # --- 6. Desenhar a Linha (com Fade Esquerda/Direita) ---
+            h_grad_line = QLinearGradient(0, 0, w, 0)
+            h_grad_line.setColorAt(0.0, faded_color) # Esquerda = Transparente
+            h_grad_line.setColorAt(0.8, solid_color) # 80% = Sólido (Foco)
+            h_grad_line.setColorAt(1.0, faded_color) # Direita = Transparente
+
+            pen = painter.pen()
+            pen.setBrush(h_grad_line)
+            pen.setWidthF(1.5)
+            painter.setPen(pen)
+            painter.setBrush(Qt.NoBrush)
+
+            painter.drawPolyline(line_polygon)
+
+        except Exception as e:
+            print(f"Erro no paintEvent do MiniGraph: {e}")
+
+
 # src\ui\components\hardware_tab.py
 
 # TODO: Implement
-
-
-# src\ui\components\header_bar.py
-
-from PySide6.QtWidgets import (QWidget, QHBoxLayout, QLabel, QFrame,
-                              QPushButton, QVBoxLayout)
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QPixmap, QIcon
-import os
-
-class HeaderBar(QFrame):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setFixedHeight(80)  # Altura reduzida
-        self.setup_ui()
-
-    def setup_ui(self):
-        self.setObjectName("headerBar")
-
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(30, 15, 30, 15)
-        layout.setSpacing(0)
-
-        # Logo e título à esquerda
-        logo_section = self.create_logo_section()
-        layout.addWidget(logo_section)
-
-        # Espaço flexível no meio
-        layout.addStretch(1)
-
-        # Botões à direita
-        buttons_section = self.create_buttons_section()
-        layout.addWidget(buttons_section)
-
-    def create_logo_section(self):
-        section = QFrame()
-        section.setObjectName("logoSection")
-        layout = QVBoxLayout(section)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(2)
-
-        # Título removido conforme solicitado
-        # title = QLabel("LUNAR SYSTEM PROTECTION")
-        # title.setObjectName("headerTitle")
-        # title.setFont(QFont("Segoe UI", 16, QFont.Bold))
-
-        # Subtítulo removido conforme solicitado
-        # subtitle = QLabel("Advanced Security Suite")
-        # subtitle.setObjectName("headerSubtitle")
-        # subtitle.setFont(QFont("Segoe UI", 10))
-
-        # layout.addWidget(title)
-        # layout.addWidget(subtitle)
-
-        return section
-
-    def create_buttons_section(self):
-        section = QFrame()
-        section.setObjectName("buttonsSection")
-        layout = QHBoxLayout(section)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(15)
-
-        # Botão de mensagem
-        self.message_btn = self.create_icon_button("message.png", "Messages")
-        layout.addWidget(self.message_btn)
-
-        # Botão de notificação
-        self.notification_btn = self.create_icon_button("no_notification.png", "Notifications")
-        layout.addWidget(self.notification_btn)
-
-        # Nome do usuário
-        user_widget = self.create_user_widget()
-        layout.addWidget(user_widget)
-
-        return section
-
-    def create_icon_button(self, icon_filename, tooltip):
-        btn = QPushButton()
-        btn.setObjectName("iconButton")
-        btn.setFixedSize(32, 32)  # Tamanho reduzido para ficar mais discreto
-        btn.setCursor(Qt.PointingHandCursor)
-        btn.setToolTip(tooltip)
-
-        # Carregar ícone - caminho correto
-        icon_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'assets', 'icons', icon_filename)
-        
-        # Se não encontrar nos assets, tenta na pasta icons local
-        if not os.path.exists(icon_path):
-            icon_path = os.path.join(os.path.dirname(__file__), '..', 'icons', icon_filename)
-        
-        if os.path.exists(icon_path):
-            pixmap = QPixmap(icon_path)
-            pixmap = pixmap.scaled(24, 24, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            btn.setIcon(QIcon(pixmap))
-            btn.setIconSize(pixmap.size())
-        else:
-            # Fallback para texto se ícone não existir
-            print(f"Ícone não encontrado: {icon_path}")
-            btn.setText("📧" if "message" in icon_filename else "🔔")
-
-        return btn
-
-    def create_user_widget(self):
-        widget = QFrame()
-        widget.setObjectName("userWidget")
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(8, 4, 8, 4)  # Margens reduzidas
-        layout.setSpacing(2)
-
-        user_label = QLabel("User")
-        user_label.setObjectName("userLabel")
-        user_label.setFont(QFont("Segoe UI", 12, QFont.Bold))
-
-        role_label = QLabel("Administrator")
-        role_label.setObjectName("roleLabel")
-        role_label.setFont(QFont("Segoe UI", 9))
-
-        layout.addWidget(user_label)
-        layout.addWidget(role_label)
-
-        return widget
 
 
 # src\ui\components\network_selector.py
@@ -1245,8 +1402,8 @@ class ParticleSystem(QWidget):
 
 from PySide6.QtWidgets import (QFrame, QVBoxLayout, QPushButton,
                               QLabel, QSizePolicy)
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont, QPixmap, QPainter, QLinearGradient, QColor
+from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtGui import QFont, QPixmap, QPainter, QLinearGradient, QColor, QIcon
 import os
 
 class Sidebar(QFrame):
@@ -1259,7 +1416,7 @@ class Sidebar(QFrame):
 
     def setup_ui(self):
         """Configura a sidebar mais estreita"""
-        self.setFixedWidth(150)  # Reduzida de 260 para 200
+        self.setFixedWidth(120)  # Reduzida de 260 para 200
         self.setObjectName("sidebar")
 
         # Layout principal
@@ -1268,6 +1425,10 @@ class Sidebar(QFrame):
         layout.setSpacing(0)
 
         # Header removido (agora está no HeaderBar)
+
+        # Logo no topo
+        logo_header = self.create_logo_header()
+        layout.addWidget(logo_header)
 
         # Navegação limpa
         nav_buttons = self.create_navigation_buttons()
@@ -1306,6 +1467,32 @@ class Sidebar(QFrame):
 
         return header_frame
 
+    def create_logo_header(self):
+        """Cria o header da sidebar com o logo"""
+        logo_label = QLabel()
+        logo_label.setObjectName("sidebarLogo")
+        logo_label.setFixedHeight(80) # Altura similar ao header_bar
+        logo_label.setAlignment(Qt.AlignCenter)
+
+        # Carregar ícone - caminho correto
+        icon_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'assets', 'icons', 'logo.png')
+
+        if not os.path.exists(icon_path):
+             # Fallback para pasta local de icons
+             icon_path = os.path.join(os.path.dirname(__file__), '..', 'icons', 'logo.png')
+
+        if os.path.exists(icon_path):
+            pixmap = QPixmap(icon_path)
+            pixmap = pixmap.scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            logo_label.setPixmap(pixmap)
+        else:
+            print(f"Logo não encontrado: {icon_path}")
+            logo_label.setText("LUNAR") # Fallback
+            logo_label.setFont(QFont("Segoe UI", 18, QFont.Bold))
+            logo_label.setStyleSheet("color: white;")
+
+        return logo_label
+
     def create_navigation_buttons(self):
         """Cria botões de navegação minimalistas"""
         nav_frame = QFrame()
@@ -1313,25 +1500,41 @@ class Sidebar(QFrame):
 
         layout = QVBoxLayout(nav_frame)
         layout.setContentsMargins(10, 20, 10, 20)  # Margens reduzidas
-        layout.setSpacing(2)
+        layout.setSpacing(6) # Espaçamento dobrado (3 -> 6)
 
         # Botões atualizados
         nav_items = [
-            ("Dashboard", "dashboard", True),
-            ("Security Tools", "tools", False),
-            ("System Info", "system_info", False),
-            ("Settings", "settings", False),
-            ("Support", "support", False)
+            # (Texto p/ ToolTip, page_id, icon_filename, is_active)
+            ("Dashboard", "dashboard", "dashboard.png", True),
+            ("Security Tools", "tools", "stools.png", False),
+            ("System Info", "system_info", "sinfo.png", False),
+            ("Settings", "settings", "settings.png", False),
+            ("Support", "support", "support.png", False)
         ]
 
         self.nav_buttons = {}
 
-        for text, page_id, is_active in nav_items:
-            btn = QPushButton(text)
+        for text, page_id, icon_name, is_active in nav_items:
+            btn = QPushButton() # Criar botão sem texto
+            btn.setToolTip(text) # Adicionar o texto como dica
             btn.setObjectName(f"navButton_{page_id}")
             btn.setCursor(Qt.PointingHandCursor)
-            btn.setFixedHeight(38)  # Altura reduzida
+            btn.setFixedHeight(108)  # Altura aumentada (72 -> 108)
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+            # Lógica para adicionar ícone
+            icon_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'assets', 'icons', icon_name)
+
+            if not os.path.exists(icon_path):
+                icon_path = os.path.join(os.path.dirname(__file__), '..', 'icons', icon_name)
+
+            if os.path.exists(icon_path):
+                pixmap = QPixmap(icon_path)
+                btn.setIcon(QIcon(pixmap))
+                btn.setIconSize(QSize(54, 54)) # Ícone aumentado (36 -> 54)
+            else:
+                print(f"Ícone de navegação não encontrado: {icon_path}")
+                btn.setText(text) # Fallback para texto se ícone falhar
 
             # Conectar sinal
             btn.clicked.connect(lambda checked, pid=page_id: self.on_navigation_click(pid))
@@ -1521,37 +1724,8 @@ QWidget {
     border: none;
 }
 
-/* ===== HEADER BAR - SEMI-TRANSPARENTE PARA VER PARTÍCULAS ===== */
-#headerBar {
-    background: rgba(30, 30, 30, 0.6);
-    border-bottom: 2px solid rgba(20, 20, 20, 0.5);
-    outline: none;
-}
-
-#logoSection {
-    background: transparent;
-    border: none;
-}
-
-#headerTitle {
-    color: #ffffff;
-    background: transparent;
-    font-size: 16px;
-    font-weight: bold;
-    letter-spacing: 0.5px;
-}
-
-#headerSubtitle {
-    color: #cccccc;
-    background: transparent;
-    font-size: 10px;
-    letter-spacing: 1px;
-}
-
-#buttonsSection {
-    background: transparent;
-    border: none;
-}
+/* ===== HEADER BAR - REMOVED ===== */
+/* The #iconButton and #userWidget styles still work */
 
 /* BOTÕES DO HEADER - SEM FUNDO (APENAS HOVER) */
 #iconButton {
@@ -1626,7 +1800,7 @@ QPushButton[navButton][active="true"] {
 
 #footerFrame {
     background: rgba(30, 30, 30, 0.6);
-    border-top: 2px transparent rgb(20, 20, 20, 0.5);
+    border-top: 2px solid rgba(20, 20, 20, 0.5);
 }
 
 #statusLabel {
@@ -1653,6 +1827,13 @@ QPushButton[navButton][active="true"] {
     border-radius: 12px;
 }
 
+/* ===== PAINEL DE HARDWARE (PILL) ===== */
+#pillHardwarePanel {
+    background: rgba(30, 30, 30, 0.9);
+    border: 1px solid #2a2a2a;
+    border-radius: 30px;
+}
+
 #hardwareStat {
     background: transparent;
     border: none;
@@ -1671,11 +1852,6 @@ QPushButton[navButton][active="true"] {
     background: transparent;
     font-size: 16px;
     font-weight: bold;
-}
-
-/* CORES ESPECÍFICAS PARA OS VALORES DE HARDWARE */
-#hardwareStat QLabel[objectName="hardwareValue"] {
-    background: transparent;
 }
 
 /* ===== PAINEL DE AÇÕES ===== */
@@ -1824,6 +2000,7 @@ ParticleSystem {
     border: none;
 }
 
+
 # src\ui\styles\components\buttons.css
 
 /* TODO: Add styles */
@@ -1876,9 +2053,68 @@ ParticleSystem {
 
 # src\utils\hardware_reader.py
 
+# src/utils/hardware_reader.py
+
+import psutil
+import traceback
+import time # NEW IMPORT
+
 class HardwareReader:
     def __init__(self):
-        pass
+        """Inicializa o leitor de hardware."""
+        # Inicializar o psutil para a CPU
+        psutil.cpu_percent(interval=None)
+
+        # NEW: Inicializar contadores de Disco
+        # Pegar os contadores totais (sem ser por partição)
+        self.last_disk_io = psutil.disk_io_counters(perdisk=False)
+        self.last_disk_time = time.time()
+
+    def get_cpu_percent(self):
+        """Retorna o uso atual da CPU em %."""
+        try:
+            return psutil.cpu_percent(interval=None)
+        except Exception:
+            return 0.0
+
+    def get_memory_percent(self):
+        """Retorna o uso atual da memória em %."""
+        try:
+            memory = psutil.virtual_memory()
+            return memory.percent
+        except Exception:
+            return 0.0
+
+    def get_disk_mbs(self): # CHANGED: Name and logic
+        """Retorna a atividade de R/W do disco em MB/s."""
+        try:
+            current_disk_io = psutil.disk_io_counters(perdisk=False)
+            current_disk_time = time.time()
+
+            # Delta de tempo (em segundos)
+            time_delta = current_disk_time - self.last_disk_time
+            if time_delta == 0:
+                # Evita divisão por zero se chamado rápido demais
+                return 0.0
+
+            # Calcular bytes lidos/escritos no intervalo
+            read_delta = current_disk_io.read_bytes - self.last_disk_io.read_bytes
+            write_delta = current_disk_io.write_bytes - self.last_disk_io.write_bytes
+            total_bytes_delta = read_delta + write_delta
+
+            # Calcular MB/s
+            bytes_per_second = total_bytes_delta / time_delta
+            mb_per_second = bytes_per_second / (1024 * 1024) # 1 MB = 1024*1024 Bytes
+
+            # Atualizar "last" para o próximo cálculo
+            self.last_disk_io = current_disk_io
+            self.last_disk_time = current_disk_time
+
+            return mb_per_second
+
+        except Exception as e:
+            print(f"Erro ao ler atividade do disco (MB/s): {e}")
+            return 0.0
 
 
 # src\utils\icon_manager.py

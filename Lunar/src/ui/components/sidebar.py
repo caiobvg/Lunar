@@ -106,8 +106,7 @@ class Sidebar(QFrame):
             ("Dashboard", "dashboard", "dashboard.png", True),
             ("Security Tools", "tools", "stools.png", False),
             ("System Info", "system_info", "sinfo.png", False),
-            ("Settings", "settings", "settings.png", False),
-            ("Support", "support", "support.png", False)
+            ("Settings", "settings", "settings.png", False)
         ]
 
         self.nav_buttons = {}

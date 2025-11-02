@@ -90,11 +90,11 @@ class Dashboard(QFrame):
 
         # Painel de ações principal (esquerda)
         action_panel = self.create_action_panel()
-        layout.addWidget(action_panel)
+        layout.addWidget(action_panel, 0, Qt.AlignTop)
 
         # Painel de módulos compacto (direita)
         modules_panel = self.create_compact_modules_panel()
-        layout.addWidget(modules_panel)
+        layout.addWidget(modules_panel, 0, Qt.AlignTop)
 
         return content_frame
 
@@ -265,7 +265,7 @@ class Dashboard(QFrame):
             self.module_switches[module_id] = switch_widget.findChild(SwitchButton)
 
         layout.addWidget(switches_container)
-        layout.addStretch(1)
+        # layout.addStretch(1) # REMOVED - prevents vertical stretching
 
         return modules_frame
 

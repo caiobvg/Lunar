@@ -112,8 +112,7 @@ class MainWindow(QMainWindow):
             "dashboard": "Dashboard - System overview and security controls",
             "tools": "Tools - Advanced system utilities",
             "system_info": "System Info - Hardware and software information",
-            "settings": "Settings - Application configuration",
-            "support": "Support - Contact and support information"
+            "settings": "Settings - Application configuration"
         }
 
         self.statusBar().showMessage(status_messages.get(page_id, "System ready"))
@@ -174,18 +173,37 @@ class MainWindow(QMainWindow):
         # 5. Floating buttons (positioned in top-right corner)
         margin = 30
         spacing = 15
+        button_size = 40 # AUMENTADO DE 32 para 40
 
         if hasattr(self, 'user_widget'):
             user_width = self.user_widget.width()
-            self.user_widget.setGeometry(w - user_width - margin, margin, user_width, 40)
+            user_height = self.user_widget.height()
+
+            # Centralizar verticalmente os botões em relação ao user_widget
+            button_y = margin + (user_height / 2) - (button_size / 2)
+
+            # Posicionar User Widget
+            self.user_widget.setGeometry(w - user_width - margin, margin, user_width, user_height)
             self.user_widget.raise_()
 
             if hasattr(self, 'notification_btn'):
-                self.notification_btn.setGeometry(w - user_width - margin - 32 - spacing, margin + 4, 32, 32)
+                # Usar button_size e button_y
+                self.notification_btn.setGeometry(
+                    w - user_width - margin - button_size - spacing,
+                    button_y,
+                    button_size,
+                    button_size
+                )
                 self.notification_btn.raise_()
 
                 if hasattr(self, 'message_btn'):
-                    self.message_btn.setGeometry(w - user_width - margin - 32 - spacing - 32 - spacing, margin + 4, 32, 32)
+                    # Usar button_size e button_y
+                    self.message_btn.setGeometry(
+                        w - user_width - margin - button_size - spacing - button_size - spacing,
+                        button_y,
+                        button_size,
+                        button_size
+                    )
                     self.message_btn.raise_()
 
     # Methods moved from header_bar.py
@@ -193,7 +211,7 @@ class MainWindow(QMainWindow):
     def create_icon_button(self, icon_filename, tooltip):
         btn = QPushButton()
         btn.setObjectName("iconButton")  # CSS will still work
-        btn.setFixedSize(32, 32)
+        btn.setFixedSize(40, 40) # AUMENTADO DE 32, 32
         btn.setCursor(Qt.PointingHandCursor)
         btn.setToolTip(tooltip)
 
@@ -204,7 +222,8 @@ class MainWindow(QMainWindow):
 
         if os.path.exists(icon_path):
             pixmap = QPixmap(icon_path)
-            pixmap = pixmap.scaled(24, 24, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            # AUMENTADO DE 24, 24 para 30, 30
+            pixmap = pixmap.scaled(30, 30, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             btn.setIcon(QIcon(pixmap))
             btn.setIconSize(pixmap.size())
         else:
@@ -216,16 +235,19 @@ class MainWindow(QMainWindow):
         widget = QFrame()
         widget.setObjectName("userWidget")  # CSS will still work
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(8, 4, 8, 4)
+        # AUMENTADO MARGENS de (8, 4, 8, 4) para (10, 6, 10, 6)
+        layout.setContentsMargins(10, 6, 10, 6)
         layout.setSpacing(2)
 
         user_label = QLabel("User")
         user_label.setObjectName("userLabel")
-        user_label.setFont(QFont("Segoe UI", 12, QFont.Bold))
+        # AUMENTADO FONTE de 12 para 15
+        user_label.setFont(QFont("Segoe UI", 15, QFont.Bold))
 
         role_label = QLabel("Administrator")
         role_label.setObjectName("roleLabel")
-        role_label.setFont(QFont("Segoe UI", 9))
+        # AUMENTADO FONTE de 9 para 11
+        role_label.setFont(QFont("Segoe UI", 11))
 
         layout.addWidget(user_label)
         layout.addWidget(role_label)
