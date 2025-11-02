@@ -10,6 +10,9 @@ from src.ui.components.hardware_graphs import MiniGraphWidget
 
 from src.ui.components.switch import SwitchButton
 
+# NEW: Define a ceiling for the DISK graph (ex: 100 MB/s = 100%)
+DISK_GRAPH_MAX_MB_S = 100.0
+
 class Dashboard(QFrame):
     def __init__(self, controller=None):
         super().__init__()
@@ -110,7 +113,7 @@ class Dashboard(QFrame):
         # Stats de hardware (com gráficos)
         self.cpu_stat = self.create_hardware_stat("CPU", "0%", "#50E3C2", show_graph=True)
         self.memory_stat = self.create_hardware_stat("MEMORY", "0%", "#4A90E2", show_graph=True)
-        self.disk_stat = self.create_hardware_stat("DISK", "0%", "#B8E986", show_graph=True)
+        self.disk_stat = self.create_hardware_stat("DISK", "0 MB/s", "#B8E986", show_graph=True)
         self.status_stat = self.create_hardware_stat("STATUS", "READY", "#FF6B6B", show_graph=False)
 
         layout.addWidget(self.cpu_stat)
@@ -337,12 +340,13 @@ class Dashboard(QFrame):
             # Buscar dados do Reader
             cpu_percent = self.hw_reader.get_cpu_percent()
             memory_percent = self.hw_reader.get_memory_percent()
-            disk_percent = self.hw_reader.get_disk_percent()
+            disk_mbs = self.hw_reader.get_disk_mbs() # CHANGED
 
             # Atualizar Labels
             self.cpu_stat.findChild(QLabel, "hardwareValue").setText(f"{cpu_percent:.0f}%")
             self.memory_stat.findChild(QLabel, "hardwareValue").setText(f"{memory_percent:.0f}%")
-            self.disk_stat.findChild(QLabel, "hardwareValue").setText(f"{disk_percent:.0f}%")
+            # CHANGED: Format the disk label as MB/s
+            self.disk_stat.findChild(QLabel, "hardwareValue").setText(f"{disk_mbs:.0f} MB/s")
 
             # Atualizar Gráficos
             if hasattr(self, 'cpu_graph'):
@@ -350,7 +354,9 @@ class Dashboard(QFrame):
             if hasattr(self, 'memory_graph'):
                 self.memory_graph.add_data_point(memory_percent)
             if hasattr(self, 'disk_graph'):
-                self.disk_graph.add_data_point(disk_percent)
+                # CHANGED: Calculate the % for the graph
+                disk_percent_for_graph = (disk_mbs / DISK_GRAPH_MAX_MB_S) * 100.0
+                self.disk_graph.add_data_point(disk_percent_for_graph)
 
             # Atualizar Status
             if cpu_percent > 80:
