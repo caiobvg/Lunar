@@ -40,58 +40,39 @@ QWidget {
     letter-spacing: 1px;
 }
 
-#statsSection {
-    background: rgba(30, 30, 30, 0.7);
-    border: 1px solid #2a2a2a;
-    border-radius: 8px;
-}
-
-#statWidget {
+#buttonsSection {
     background: transparent;
     border: none;
 }
 
-#statTitle {
-    color: #a0a0a0;
-    background: transparent;
-    font-size: 9px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-#statValue {
-    background: transparent;
-    font-size: 14px;
-    font-weight: bold;
-}
-
-#actionSection {
-    background: transparent;
-    border: none;
-}
-
-#launchButton {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4a90e2, stop:1 #50e3c2);
-    color: #000000;
+#iconButton {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
     border: none;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: 16px;
+}
+
+#iconButton:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+#userWidget {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 6px;
+    padding: 5px 15px;
+}
+
+#userLabel {
+    color: #ffffff;
+    background: transparent;
+    font-size: 12px;
     font-weight: bold;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
 }
 
-#launchButton:hover {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #5a9fee, stop:1 #60f3d2);
-}
-
-#launchButton:pressed {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #3a80d2, stop:1 #40d3b2);
-}
-
-#versionLabel {
-    color: #666666;
+#roleLabel {
+    color: #a0a0a0;
     background: transparent;
     font-size: 9px;
 }
@@ -194,6 +175,33 @@ QPushButton[navButton][active="true"] {
     background: transparent;
     font-size: 11px;
     padding: 8px;
+}
+
+/* ===== PAINEL DE HARDWARE NO DASHBOARD ===== */
+#hardwarePanel {
+    background: rgba(30, 30, 30, 0.7);
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+}
+
+#hardwareStat {
+    background: transparent;
+    border: none;
+}
+
+#hardwareTitle {
+    color: #a0a0a0;
+    background: transparent;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#hardwareValue {
+    background: transparent;
+    font-size: 16px;
+    font-weight: bold;
 }
 
 /* ===== MÓDULOS ===== */

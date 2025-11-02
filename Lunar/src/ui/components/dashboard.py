@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-                              QFrame, QPushButton, QProgressBar, QGridLayout)
+                              QFrame, QPushButton, QGridLayout)
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont
 import psutil
@@ -19,13 +19,17 @@ class Dashboard(QWidget):
         self.setup_timers()
 
     def setup_ui(self):
-        """Configura dashboard limpo sem header duplicado"""
+        """Configura dashboard com hardware stats acima do spoofing"""
         self.setObjectName("dashboard")
 
         # Layout principal
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(30, 20, 30, 20)
         main_layout.setSpacing(25)
+
+        # Painel de hardware (novo)
+        hardware_panel = self.create_hardware_panel()
+        main_layout.addWidget(hardware_panel)
 
         # Área de conteúdo principal
         content_area = self.create_content_area()
@@ -50,6 +54,57 @@ class Dashboard(QWidget):
 
         return content_frame
 
+    def create_hardware_panel(self):
+        """Cria painel de informações de hardware"""
+        hardware_frame = QFrame()
+        hardware_frame.setObjectName("hardwarePanel")
+        hardware_frame.setFixedHeight(100)
+
+        layout = QHBoxLayout(hardware_frame)
+        layout.setContentsMargins(20, 15, 20, 15)
+        layout.setSpacing(25)
+
+        # Stats de hardware
+        self.cpu_stat = self.create_hardware_stat("CPU", "0%", "#50E3C2")
+        self.memory_stat = self.create_hardware_stat("MEMORY", "0%", "#4A90E2")
+        self.disk_stat = self.create_hardware_stat("DISK", "0%", "#B8E986")
+        self.status_stat = self.create_hardware_stat("STATUS", "READY", "#FF6B6B")
+
+        layout.addWidget(self.cpu_stat)
+        layout.addWidget(self.memory_stat)
+        layout.addWidget(self.disk_stat)
+        layout.addWidget(self.status_stat)
+        layout.addStretch(1)
+
+        return hardware_frame
+
+    def create_hardware_stat(self, title, value, color):
+        """Cria widget individual de stat de hardware"""
+        widget = QFrame()
+        widget.setObjectName("hardwareStat")
+        widget.setFixedSize(120, 70)
+
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 8, 0, 8)
+        layout.setSpacing(4)
+        layout.setAlignment(Qt.AlignCenter)
+
+        title_label = QLabel(title)
+        title_label.setObjectName("hardwareTitle")
+        title_label.setFont(QFont("Segoe UI", 10, QFont.Medium))
+        title_label.setAlignment(Qt.AlignCenter)
+
+        value_label = QLabel(value)
+        value_label.setObjectName("hardwareValue")
+        value_label.setFont(QFont("Segoe UI", 16, QFont.Bold))
+        value_label.setAlignment(Qt.AlignCenter)
+        value_label.setStyleSheet(f"color: {color};")
+
+        layout.addWidget(title_label)
+        layout.addWidget(value_label)
+
+        return widget
+
     def create_action_panel(self):
         """Cria painel de ações principal"""
         action_frame = QFrame()
@@ -62,7 +117,7 @@ class Dashboard(QWidget):
         # Container do botão principal
         button_container = QFrame()
         button_container.setObjectName("buttonContainer")
-        button_container.setFixedHeight(200)
+        button_container.setFixedHeight(180)
 
         button_layout = QVBoxLayout(button_container)
         button_layout.setAlignment(Qt.AlignCenter)
@@ -172,8 +227,10 @@ class Dashboard(QWidget):
 
     def setup_timers(self):
         """Configura timers para atualização em tempo real"""
-        # Removido - stats agora estão no HeaderBar
-        pass
+        self.stats_timer = QTimer()
+        self.stats_timer.timeout.connect(self.update_hardware_stats)
+        self.stats_timer.start(2000)
+        self.update_hardware_stats()
 
     def on_spoof_button_click(self):
         """Handler do botão de spoofing"""
@@ -198,3 +255,37 @@ class Dashboard(QWidget):
         self.spoof_status.setText("Security protocol completed")
 
         QTimer.singleShot(2000, lambda: self.spoof_status.setText("System ready for spoofing protocol"))
+
+    def update_hardware_stats(self):
+        """Atualiza as estatísticas de hardware"""
+        try:
+            # CPU
+            cpu_percent = psutil.cpu_percent(interval=0.1)
+            self.cpu_stat.findChild(QLabel, "hardwareValue").setText(f"{cpu_percent:.0f}%")
+
+            # Memória
+            memory = psutil.virtual_memory()
+            memory_percent = memory.percent
+            self.memory_stat.findChild(QLabel, "hardwareValue").setText(f"{memory_percent:.0f}%")
+
+            # Disco
+            try:
+                disk = psutil.disk_usage('C:')
+                disk_percent = disk.percent
+                self.disk_stat.findChild(QLabel, "hardwareValue").setText(f"{disk_percent:.0f}%")
+            except:
+                self.disk_stat.findChild(QLabel, "hardwareValue").setText("N/A")
+
+            # Status baseado na CPU
+            if cpu_percent > 80:
+                self.status_stat.findChild(QLabel, "hardwareValue").setText("HIGH LOAD")
+                self.status_stat.findChild(QLabel, "hardwareValue").setStyleSheet("color: #FF6B6B;")
+            elif cpu_percent > 50:
+                self.status_stat.findChild(QLabel, "hardwareValue").setText("MODERATE")
+                self.status_stat.findChild(QLabel, "hardwareValue").setStyleSheet("color: #FFA726;")
+            else:
+                self.status_stat.findChild(QLabel, "hardwareValue").setText("OPTIMAL")
+                self.status_stat.findChild(QLabel, "hardwareValue").setStyleSheet("color: #B8E986;")
+
+        except Exception as e:
+            print(f"Hardware stats update error: {e}")
