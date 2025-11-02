@@ -24,8 +24,11 @@ class ParticleSystem(QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_particles)
         self.timer.start(33)  # ~30 FPS
+        
+        # Configurar para ser completamente transparente
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
-
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        
         # Garantir que fique atrás de outros widgets
         self.lower()
 
@@ -44,12 +47,12 @@ class ParticleSystem(QWidget):
         width = self.width() if self.width() > 0 else 800
         height = self.height() if self.height() > 0 else 600
 
-        # Cores sutis para tema lunar
+        # Cores mais vibrantes para serem visíveis através do header
         colors = [
-            QColor(255, 255, 255),  # Branco
-            QColor(240, 240, 255),  # Branco azulado
+            QColor(255, 255, 255),  # Branco puro
             QColor(220, 230, 255),  # Azul muito claro
-            QColor(255, 250, 240),  # Branco amarelado sutil
+            QColor(240, 240, 255),  # Branco azulado
+            QColor(255, 250, 250),  # Branco levemente rosado
         ]
 
         self.particles = []
@@ -57,15 +60,15 @@ class ParticleSystem(QWidget):
             # Distribuir partículas por toda a área
             x = random.uniform(0, width)
             y = random.uniform(0, height)
-            size = random.uniform(0.8, 2.0)
+            size = random.uniform(1.0, 3.0)  # Partículas um pouco maiores
             color = random.choice(colors)
 
-            # Velocidades mais lentas e variadas
-            speed_x = random.uniform(-0.15, 0.15)
-            speed_y = random.uniform(-0.15, 0.15)
+            # Velocidades mais lentas
+            speed_x = random.uniform(-0.1, 0.1)
+            speed_y = random.uniform(-0.1, 0.1)
 
-            # Opacidade mais visível
-            opacity = random.uniform(0.2, 0.6)
+            # Opacidade mais alta para serem visíveis
+            opacity = random.uniform(0.3, 0.8)
 
             self.particles.append(Particle(x, y, size, color, speed_x, speed_y, opacity))
 
@@ -77,7 +80,6 @@ class ParticleSystem(QWidget):
         width = self.width()
         height = self.height()
 
-        # Se o tamanho mudou significativamente, reinicializar partículas
         if width <= 0 or height <= 0:
             return
 
@@ -115,44 +117,50 @@ class ParticleSystem(QWidget):
         self.update()
 
     def paintEvent(self, event):
-        """Desenha as partículas"""
-        if not self.initialized:
+        """Desenha as partículas - CORRIGIDO para evitar erros de QPainter"""
+        if not self.initialized or not self.isVisible():
             return
 
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        try:
+            painter = QPainter(self)
+            if not painter.isActive():
+                return
+                
+            painter.setRenderHint(QPainter.Antialiasing)
+            
+            # IMPORTANTE: Não preencher o fundo - deixar transparente
+            painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+            
+            for particle in self.particles:
+                # Garantir que a opacidade esteja dentro do range válido
+                opacity = max(0.05, min(1.0, particle.opacity))
 
-        for particle in self.particles:
-            # Garantir que a opacidade esteja dentro do range válido
-            opacity = max(0.05, min(1.0, particle.opacity))
+                color = QColor(particle.color)
+                color.setAlphaF(opacity)
 
-            color = QColor(particle.color)
-            color.setAlphaF(opacity)
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QBrush(color))
 
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(QBrush(color))
-
-            # Desenhar partícula
-            painter.drawEllipse(QPointF(particle.x, particle.y), particle.size, particle.size)
+                # Desenhar partícula
+                painter.drawEllipse(QPointF(particle.x, particle.y), particle.size, particle.size)
+                
+            painter.end()
+            
+        except Exception as e:
+            print(f"Erro no ParticleSystem paintEvent: {e}")
 
     def resizeEvent(self, event):
         """Reinicializa partículas quando o tamanho muda"""
         super().resizeEvent(event)
-        if self.initialized:
-            # Manter as partículas existentes, mas ajustar suas posições
-            # para o novo tamanho
+        if self.initialized and event.oldSize().width() > 0 and event.oldSize().height() > 0:
             old_width = event.oldSize().width()
             old_height = event.oldSize().height()
             new_width = event.size().width()
             new_height = event.size().height()
 
-            if old_width > 0 and old_height > 0:
-                scale_x = new_width / old_width
-                scale_y = new_height / old_height
+            scale_x = new_width / old_width
+            scale_y = new_height / old_height
 
-                for particle in self.particles:
-                    particle.x *= scale_x
-                    particle.y *= scale_y
-            else:
-                # Se não tinha tamanho anterior, reinicializar
-                self.init_particles(self.particle_count)
+            for particle in self.particles:
+                particle.x *= scale_x
+                particle.y *= scale_y

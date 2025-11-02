@@ -1,10 +1,10 @@
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QPushButton,
-                              QLabel, QFrame, QSizePolicy)
+from PySide6.QtWidgets import (QFrame, QVBoxLayout, QPushButton,
+                              QLabel, QSizePolicy)
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont, QPixmap, QPainter, QLinearGradient, QColor
 import os
 
-class Sidebar(QWidget):
+class Sidebar(QFrame):
     navigation_changed = Signal(str)
 
     def __init__(self, parent=None):
@@ -14,7 +14,7 @@ class Sidebar(QWidget):
 
     def setup_ui(self):
         """Configura a sidebar mais estreita"""
-        self.setFixedWidth(200)  # Reduzida de 260 para 200
+        self.setFixedWidth(150)  # Reduzida de 260 para 200
         self.setObjectName("sidebar")
 
         # Layout principal

@@ -1,12 +1,12 @@
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-                              QFrame, QPushButton, QGridLayout)
+from PySide6.QtWidgets import (QFrame, QVBoxLayout, QHBoxLayout, QLabel,
+                              QPushButton, QGridLayout, QWidget)
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont
 import psutil
 
 from src.ui.components.switch import SwitchButton
 
-class Dashboard(QWidget):
+class Dashboard(QFrame):
     def __init__(self, controller=None):
         super().__init__()
         self.controller = controller
@@ -98,7 +98,9 @@ class Dashboard(QWidget):
         value_label.setObjectName("hardwareValue")
         value_label.setFont(QFont("Segoe UI", 16, QFont.Bold))
         value_label.setAlignment(Qt.AlignCenter)
-        value_label.setStyleSheet(f"color: {color};")
+        
+        # Aplicar cor diretamente via estilo
+        value_label.setStyleSheet(f"color: {color}; background: transparent;")
 
         layout.addWidget(title_label)
         layout.addWidget(value_label)
@@ -195,7 +197,7 @@ class Dashboard(QWidget):
 
     def create_switch_row(self, name, module_id):
         """Cria uma linha compacta com switch"""
-        row_widget = QWidget()
+        row_widget = QFrame()
         row_widget.setObjectName(f"switchRow_{module_id}")
         row_widget.setFixedHeight(35)
 

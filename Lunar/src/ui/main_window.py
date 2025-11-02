@@ -1,13 +1,14 @@
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout,
-                              QHBoxLayout, QStatusBar, QMessageBox, QLabel)
+                              QHBoxLayout, QStatusBar, QMessageBox, QLabel, QFrame)
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QPalette, QColor
 import os
 
 from src.ui.components.sidebar import Sidebar
 from src.ui.components.dashboard import Dashboard
 from src.ui.components.particles import ParticleSystem
-from src.ui.components.header_bar import HeaderBar  # Novo componente
+from src.ui.components.header_bar import HeaderBar
+import traceback
 
 class MainWindow(QMainWindow):
     def __init__(self, spoofer_controller):
@@ -24,9 +25,9 @@ class MainWindow(QMainWindow):
         self.setGeometry(100, 100, 1400, 900)
         self.setMinimumSize(1200, 800)
 
-        # Estilo mínimo inicial - CORRIGIDO para preto suave
-        self.setStyleSheet("background-color: #0d0d0d; color: white;")
-
+        # Aplicar fundo básico
+        self.setStyleSheet("QMainWindow { background-color: #1a1a1a; }")
+        
         self.center_on_screen()
 
     def center_on_screen(self):
@@ -43,7 +44,7 @@ class MainWindow(QMainWindow):
         try:
             self.setup_ui()
             self.load_stylesheet()
-            print("Interface Lunar com particulas carregada")
+            print("Interface Lunar com partículas carregada")
 
             # Inicializar partículas após um pequeno delay
             QTimer.singleShot(100, self.initialize_particles)
@@ -53,7 +54,7 @@ class MainWindow(QMainWindow):
             self.setup_fallback_ui()
 
     def setup_ui(self):
-        """Configura a interface completa com partículas de fundo"""
+        """Configura a interface completa"""
         # Widget central
         central_widget = QWidget()
         central_widget.setObjectName("centralWidget")
@@ -64,23 +65,27 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # HeaderBar no topo
+        # Sistema de partículas como overlay transparente - AGORA PRIMEIRO
+        self.particle_system = ParticleSystem(central_widget)
+        self.particle_system.lower()  # Coloca atrás de todos os widgets
+
+        # HeaderBar no topo - AGORA DEPOIS DAS PARTÍCULAS
         self.header_bar = HeaderBar()
         main_layout.addWidget(self.header_bar)
 
         # Área de conteúdo (sidebar + conteúdo)
-        content_area = QWidget()
+        content_area = QFrame()
         content_area.setObjectName("contentArea")
         content_layout = QHBoxLayout(content_area)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
 
-        # Sidebar (mais estreita)
+        # Sidebar
         self.sidebar = Sidebar()
         content_layout.addWidget(self.sidebar)
 
         # Área de conteúdo principal
-        self.content_stack = QWidget()
+        self.content_stack = QFrame()
         self.content_stack.setObjectName("contentStack")
         content_stack_layout = QVBoxLayout(self.content_stack)
         content_stack_layout.setContentsMargins(0, 0, 0, 0)
@@ -93,11 +98,6 @@ class MainWindow(QMainWindow):
         content_layout.addWidget(self.content_stack)
 
         main_layout.addWidget(content_area)
-
-        # Sistema de partículas como fundo - CORRIGIDO
-        # Agora o ParticleSystem é filho do central_widget e se expande
-        self.particle_system = ParticleSystem(central_widget)
-        self.particle_system.lower()  # Coloca atrás de todos os widgets
 
         # Barra de status
         self.setup_status_bar()
@@ -114,7 +114,7 @@ class MainWindow(QMainWindow):
             "tools": "Tools - Advanced system utilities",
             "system_info": "System Info - Hardware and software information",
             "settings": "Settings - Application configuration",
-            "discord": "Discord - Contact and support information"
+            "support": "Support - Contact and support information"
         }
 
         self.statusBar().showMessage(status_messages.get(page_id, "System ready"))
@@ -128,58 +128,100 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(central_widget)
         error_label = QLabel("System interface compatibility mode")
         error_label.setAlignment(Qt.AlignCenter)
+        error_label.setStyleSheet("color: white;")
         layout.addWidget(error_label)
 
     def setup_status_bar(self):
         """Configura barra de status"""
         status_bar = QStatusBar()
-        status_bar.showMessage("Lunar Spoofer initialized - Carbon theme active")
+        status_bar.showMessage("Lunar Spoofer initialized - Modern theme active")
         self.setStatusBar(status_bar)
 
     def resizeEvent(self, event):
         """Garante que o sistema de partículas ocupe toda a área"""
         super().resizeEvent(event)
         if hasattr(self, 'particle_system'):
-            # Fazer o sistema de partículas ocupar toda a área do centralWidget
-            self.particle_system.setGeometry(self.centralWidget().rect())
+            self.particle_system.setGeometry(0, 0, self.width(), self.height())
 
     def initialize_particles(self):
         """Inicializa e posiciona o sistema de partículas"""
         if hasattr(self, 'particle_system'):
-            # Garantir que as partículas ocupem toda a área
             self.particle_system.setGeometry(0, 0, self.width(), self.height())
-            # Forçar uma atualização
             self.particle_system.update()
 
     def load_stylesheet(self):
-        """Carrega CSS atualizado"""
+        """Carrega CSS atualizado de forma mais robusta"""
         try:
-            css_path = os.path.join(os.path.dirname(__file__), 'styles', 'main.css')
+            # Constrói um caminho absoluto para o arquivo CSS
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            css_path = os.path.join(current_dir, 'styles', 'main.css')
+
             if os.path.exists(css_path):
                 with open(css_path, 'r', encoding='utf-8') as f:
-                    self.setStyleSheet(f.read())
-                print("CSS estelar com particulas aplicado")
+                    css_content = f.read()
+                    # Aplicar CSS
+                    self.setStyleSheet(css_content)
+                print(f"CSS aplicado com sucesso de: {css_path}")
             else:
-                self.apply_fallback_styles()
+                print(f"ERRO: Arquivo CSS não encontrado em: {css_path}")
+                self.apply_minimal_styles()
         except Exception as e:
-            print(f"CSS error: {e}")
-            self.apply_fallback_styles()
+            print(f"Erro ao carregar CSS: {e}")
+            self.apply_minimal_styles()
 
-    def apply_fallback_styles(self):
-        """Estilos de fallback"""
-        fallback_css = """
+    def apply_minimal_styles(self):
+        """Aplica estilos mínimos para garantir funcionamento"""
+        minimal_css = """
             QMainWindow {
-                background-color: #000000;
-                color: #ffffff;
-                font-family: "Segoe UI";
-            }
-            QStatusBar {
                 background-color: #1a1a1a;
-                color: #b0b0b0;
-                padding: 8px;
+                color: #ffffff;
+            }
+
+            /* ===== ESTILOS DO HEADER ADICIONADOS AQUI ===== */
+            #headerBar {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #2d2d2d, stop:1 #3a3a3a);
+                border-bottom: 2px solid #4a4a4a;
+                outline: none;
+            }
+            #headerTitle {
+                color: #ffffff;
+                background: transparent;
+                font-size: 16px;
+                font-weight: bold;
+            }
+            #headerSubtitle {
+                color: #cccccc;
+                background: transparent;
+                font-size: 10px;
+            }
+            #userLabel {
+                color: #ffffff;
+                background: transparent;
+            }
+            #roleLabel {
+                color: #cccccc;
+                background: transparent;
+            }
+            /* ============================================== */
+
+            QPushButton#mainSpoofButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4a90e2, stop:1 #50e3c2);
+                color: #000000;
+                border: none;
+                border-radius: 8px;
+                font-size: 13px;
+                font-weight: bold;
+                padding: 14px 28px;
+            }
+            QPushButton#mainSpoofButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #5a9fee, stop:1 #60f3d2);
+            }
+            QLabel#hardwareValue {
+                font-size: 16px;
+                font-weight: bold;
             }
         """
-        self.setStyleSheet(fallback_css)
+        self.setStyleSheet(minimal_css)
 
     def closeEvent(self, event):
         """Handler de fechamento"""
