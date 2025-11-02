@@ -1,0 +1,381 @@
+/* ===== TEMA PROFISSIONAL CARBON ===== */
+/* Qt não suporta CSS variables, então usamos os valores diretamente */
+
+/* ===== RESET E ESTILOS GERAIS ===== */
+QMainWindow {
+    background: #000000;
+    color: #ffffff;
+    font-family: "Segoe UI", "SF Pro Display", -apple-system, BlinkMacSystemFont, system-ui;
+    font-size: 13px;
+    font-weight: 400;
+}
+
+QWidget {
+    background: transparent;
+    color: #ffffff;
+    border: none;
+    outline: none;
+}
+
+/* ===== SIDEBAR CARBON ===== */
+#sidebar {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 #111111,
+                                stop:1 #1a1a1a);
+    border-right: 1px solid #2a2a2a;
+}
+
+#sidebarHeader {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #1a1a1a,
+                                stop:1 #222222);
+    border-bottom: 1px solid #2a2a2a;
+    border-radius: 0px;
+}
+
+#logoLabel {
+    color: #ffffff;
+    background: transparent;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+#subtitleLabel {
+    color: #888888;
+    background: transparent;
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+/* Botões de navegação */
+QPushButton[navButton] {
+    background: transparent;
+    color: #b0b0b0;
+    border: none;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 2px 8px;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: left;
+}
+
+QPushButton[navButton]:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #e0e0e0;
+    border-left: 2px solid #1890ff;
+}
+
+QPushButton[navButton][active="true"] {
+    background: rgba(24, 144, 255, 0.15);
+    color: #1890ff;
+    border-left: 2px solid #1890ff;
+    font-weight: 600;
+}
+
+#footerFrame {
+    background: #1a1a1a;
+    border-top: 1px solid #2a2a2a;
+    border-radius: 0px;
+}
+
+#versionLabel {
+    color: #888888;
+    background: transparent;
+    font-size: 9px;
+    font-weight: 500;
+}
+
+#statusLabel {
+    color: #13c2c2;
+    background: transparent;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* ===== DASHBOARD CARBON ===== */
+#dashboard {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                                stop:0 #0a0a0a,
+                                stop:1 #111111);
+}
+
+/* Header de estatísticas */
+#statsHeader {
+    background: transparent;
+    border: none;
+    border-radius: 0px;
+}
+
+#statCard, #statusCard {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+}
+
+#statCard:hover, #statusCard:hover {
+    border: 1px solid #333333;
+}
+
+#statTitle {
+    color: #888888;
+    background: transparent;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+#statValue {
+    color: #ffffff;
+    background: transparent;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+#statProgress {
+    background: #222222;
+    border: none;
+    border-radius: 2px;
+    height: 4px;
+}
+
+#statProgress::chunk {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 #13c2c2,
+                                stop:1 #1890ff);
+    border-radius: 2px;
+}
+
+#statusDot {
+    color: #13c2c2;
+    background: transparent;
+    font-size: 12px;
+}
+
+#statusText {
+    color: #ffffff;
+    background: transparent;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* ===== PAINÉIS PRINCIPAIS ===== */
+#actionPanel {
+    background: transparent;
+    border: none;
+}
+
+#buttonContainer {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+}
+
+#mainSpoofButton {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 #1890ff,
+                                stop:1 #13c2c2);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 16px 32px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+}
+
+#mainSpoofButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 #40a9ff,
+                                stop:1 #36cfc9);
+}
+
+#mainSpoofButton:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 #096dd9,
+                                stop:1 #08979c);
+}
+
+#mainSpoofButton:disabled {
+    background: #222222;
+    color: #888888;
+}
+
+#spoofStatus {
+    color: #b0b0b0;
+    background: transparent;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 8px;
+}
+
+/* ===== MÓDULOS COM SWITCHES ===== */
+#modulesPanel {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+}
+
+#modulesTitle {
+    color: #ffffff;
+    background: transparent;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+}
+
+QFrame[switchRow] {
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+}
+
+QFrame[switchRow]:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+#moduleName {
+    color: #e0e0e0;
+    background: transparent;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* ===== SWITCH BUTTON CARBON ===== */
+SwitchButton {
+    background-color: #2a2a2a;
+    border: 2px solid #333333;
+    border-radius: 12px;
+}
+
+SwitchButton:hover {
+    background-color: #222222;
+    border: 2px solid #2a2a2a;
+}
+
+SwitchButton:checked {
+    background-color: #1890ff;
+    border: 2px solid #1890ff;
+}
+
+SwitchButton:checked:hover {
+    background-color: #40a9ff;
+    border: 2px solid #1890ff;
+}
+
+SwitchButton::handle {
+    background-color: #ffffff;
+    border: none;
+    border-radius: 9px;
+}
+
+SwitchButton:checked::handle {
+    background-color: #ffffff;
+}
+
+/* ===== BARRA DE STATUS CARBON ===== */
+QStatusBar {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 #1a1a1a,
+                                stop:1 #222222);
+    color: #e0e0e0;
+    border-top: 1px solid #2a2a2a;
+    padding: 8px 20px;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+QStatusBar::item {
+    border: none;
+}
+
+/* ===== SCROLLBARS CARBON ===== */
+QScrollBar:vertical {
+    background: #1a1a1a;
+    width: 10px;
+    margin: 0px;
+    border-radius: 5px;
+}
+
+QScrollBar::handle:vertical {
+    background: #2a2a2a;
+    border-radius: 5px;
+    min-height: 25px;
+    margin: 2px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #333333;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+    height: 0px;
+}
+
+QScrollBar:horizontal {
+    background: #1a1a1a;
+    height: 10px;
+    margin: 0px;
+    border-radius: 5px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #2a2a2a;
+    border-radius: 5px;
+    min-width: 25px;
+    margin: 2px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: #333333;
+}
+
+/* ===== MENSAGENS E ALERTAS ===== */
+QMessageBox {
+    background: #111111;
+    color: #ffffff;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+}
+
+QMessageBox QLabel {
+    color: #ffffff;
+    background: transparent;
+}
+
+QMessageBox QPushButton {
+    background: #222222;
+    color: #ffffff;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    padding: 8px 16px;
+    font-weight: 600;
+    min-width: 80px;
+}
+
+QMessageBox QPushButton:hover {
+    background: #2a2a2a;
+    border: 1px solid #1890ff;
+}
+
+QMessageBox QPushButton:default {
+    background: #1890ff;
+    color: #ffffff;
+    border: 1px solid #1890ff;
+}
+
+/* ===== PARTÍCULAS SOBRE CARBON ===== */
+ParticleSystem {
+    background: transparent;
+    border: none;
+}

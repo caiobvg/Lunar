@@ -1,0 +1,1706 @@
+# config.json
+
+{}
+
+# main.py
+
+"""
+PONTO DE ENTRADA PRINCIPAL - Lunar Spoofer
+"""
+import sys
+import os
+import ctypes
+import traceback
+
+def check_admin_privileges():
+    """Verifica se está executando como administrador"""
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
+
+def setup_environment():
+    """Configura o ambiente Python"""
+    # Adicionar src ao path
+    src_path = os.path.join(os.path.dirname(__file__), 'src')
+    if src_path not in sys.path:
+        sys.path.insert(0, src_path)
+
+def main():
+    """Função principal"""
+    print("Inicializando Lunar Spoofer...")
+
+    # Configurar ambiente
+    setup_environment()
+
+    # Verificar privilégios
+    if not check_admin_privileges():
+        print("ERRO: Execute como Administrador!")
+        input("Pressione Enter para sair...")
+        return 1
+
+    try:
+        from src.core.app import LunarApp
+
+        # Criar e executar aplicação
+        app = LunarApp()
+        return app.run()
+
+    except Exception as e:
+        print(f"Erro fatal na inicialização: {e}")
+        print(f"Traceback: {traceback.format_exc()}")
+        input("Pressione Enter para sair...")
+        return 1
+
+if __name__ == "__main__":
+    exit_code = main()
+    sys.exit(exit_code)
+
+
+# README.md
+
+# Documentation
+
+TODO
+
+
+# run_pyside.py
+
+# TODO: Implement
+
+
+# script.py
+
+import os
+import pathlib
+
+def export_project_structure(root_dir, output_file):
+    # Lista de extensões de arquivos de código (personalizável)
+    code_extensions = {
+        '.py', '.js', '.html', '.css', '.java', '.c', '.cpp', '.cs', '.php', '.rb',
+        '.go', '.rs', '.ts', '.sql', '.json', '.xml', '.yaml', '.yml', '.md', '.cfg',
+        '.conf', '.ini', '.sh', '.bat', '.ps1', '.vue', '.jsx',
+        '.tsx', '.scss', '.sass', '.less', '.asm', '.swift', '.kt', '.dart'
+    }
+    
+    with open(output_file, 'w', encoding='utf-8') as outfile:
+        for root, dirs, files in os.walk(root_dir):
+            # Ignorar pastas de versão (personalizável)
+            ignore_dirs = {'.git', '__pycache__', 'node_modules', 'vendor', 'dist', 'build'}
+            dirs[:] = [d for d in dirs if d not in ignore_dirs]
+            
+            for file in files:
+                file_path = pathlib.Path(root) / file
+                relative_path = file_path.relative_to(root_dir)
+                
+                # Verificar se é um arquivo de código
+                if file_path.suffix.lower() in code_extensions:
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as infile:
+                            content = infile.read()
+                    except UnicodeDecodeError:
+                        try:
+                            with open(file_path, 'r', encoding='latin-1') as infile:
+                                content = infile.read()
+                        except Exception:
+                            content = f"[ERRO: Não foi possível ler o arquivo {relative_path}]\n"
+                    except Exception as e:
+                        content = f"[ERRO: {str(e)}]\n"
+
+                    # Escrever no arquivo de saída
+                    outfile.write(f"# {relative_path}\n\n")
+                    outfile.write(content)
+                    outfile.write("\n\n")
+
+if __name__ == "__main__":
+    project_root = input("Digite o caminho completo do projeto (ou Enter para usar o diretório atual): ").strip()
+    if not project_root:
+        project_root = os.getcwd()
+    
+    output_filename = "projeto_completo.txt"
+    export_project_structure(project_root, output_filename)
+    print(f"Arquivo '{output_filename}' gerado com sucesso!")
+
+# docs\migration_guide.md
+
+# Documentation
+
+TODO
+
+
+# docs\ui_specs.md
+
+# Documentation
+
+TODO
+
+
+# src\auth\auth_system_firebase.py
+
+# TODO: Implement
+
+
+# src\auth\license_generator.py
+
+# TODO: Implement
+
+
+# src\auth\login_handler.py
+
+# TODO: Implement
+
+
+# src\cleaners\system_cleaner.py
+
+class SystemCleaner:
+    def __init__(self):
+        pass
+
+
+# src\cleaners\system_paths.py
+
+# TODO: Implement
+
+
+# src\controllers\spoofer_controller.py
+
+class SpoofingController:
+    def __init__(self, cleaner, mac_spoofer, hwid_spoofer, guid_spoofer, hw_reader):
+        self.cleaner = cleaner
+        self.mac_spoofer = mac_spoofer
+        self.hwid_spoofer = hwid_spoofer
+        self.guid_spoofer = guid_spoofer
+        self.hw_reader = hw_reader
+
+
+# src\core\app.py
+
+import sys
+import os
+from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtCore import QTimer
+from PySide6.QtGui import QIcon
+
+class LunarApp:
+    def __init__(self):
+        # Criar QApplication PRIMEIRO
+        self.qt_app = QApplication(sys.argv)
+        self.main_window = None
+
+        # Configuração básica
+        self.setup_application()
+
+    def setup_application(self):
+        """Configurações iniciais seguras"""
+        self.qt_app.setApplicationName("Lunar Spoofer")
+        self.qt_app.setApplicationVersion("1.0.0")
+
+        # Tentar carregar ícone, mas não crítico
+        try:
+            icon_path = "assets/icons/app.ico"
+            if os.path.exists(icon_path):
+                self.qt_app.setWindowIcon(QIcon(icon_path))
+        except:
+            pass  # Ícone não é crítico
+
+    def initialize_components(self):
+        """Inicialização segura dos componentes"""
+        try:
+            # Importar aqui para evitar dependências circulares
+            from src.ui.main_window import MainWindow
+
+            # Inicializar controladores básicos (simplificado por enquanto)
+            spoofer_controller = self.create_dummy_controller()
+
+            # Criar janela principal
+            self.main_window = MainWindow(spoofer_controller)
+            return True
+
+        except Exception as e:
+            print(f"Erro crítico na inicialização: {e}")
+            self.show_error_message(str(e))
+            return False
+
+    def create_dummy_controller(self):
+        """Cria controlador temporário para testes"""
+        class DummyController:
+            def __init__(self):
+                self.status = "Ready"
+
+        return DummyController()
+
+    def show_error_message(self, error_details):
+        """Mostra mensagem de erro amigável"""
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Critical)
+        msg.setWindowTitle("Erro de Inicialização")
+        msg.setText("Não foi possível iniciar o Lunar Spoofer")
+        msg.setInformativeText(f"Detalhes: {error_details}")
+        msg.setDetailedText(f"Traceback completo:\n{error_details}")
+        msg.exec()
+
+    def run(self):
+        """Executa a aplicação de forma segura"""
+        print("Iniciando Lunar Spoofer...")
+
+        try:
+            if self.initialize_components():
+                self.main_window.show()
+                print("Aplicação iniciada com sucesso")
+                return self.qt_app.exec()
+            else:
+                print("Falha na inicialização")
+                return 1
+
+        except Exception as e:
+            print(f"Erro fatal: {e}")
+            self.show_error_message(str(e))
+            return 1
+
+
+# src\core\config.py
+
+import json
+import os
+from pathlib import Path
+
+class Config:
+    def __init__(self):
+        self.config_path = Path("config.json")
+        self.default_config = {
+            "theme": "purple",
+            "window_size": [1400, 900],
+            "auto_start": False,
+            "admin_required": True,
+            "log_level": "INFO"
+        }
+        self.config = self.load_config()
+
+    def load_config(self):
+        """Carrega configuração do arquivo ou cria padrão"""
+        if self.config_path.exists():
+            try:
+                with open(self.config_path, 'r', encoding='utf-8') as f:
+                    return {**self.default_config, **json.load(f)}
+            except Exception as e:
+                print(f"Erro ao carregar config: {e}")
+                return self.default_config
+        else:
+            self.save_config(self.default_config)
+            return self.default_config
+
+    def save_config(self, config=None):
+        """Salva configuração no arquivo"""
+        if config is None:
+            config = self.config
+
+        try:
+            with open(self.config_path, 'w', encoding='utf-8') as f:
+                json.dump(config, f, indent=4, ensure_ascii=False)
+            return True
+        except Exception as e:
+            print(f"Erro ao salvar config: {e}")
+            return False
+
+    def get(self, key, default=None):
+        """Obtém valor da configuração"""
+        return self.config.get(key, default)
+
+    def set(self, key, value):
+        """Define valor da configuração"""
+        self.config[key] = value
+        return self.save_config()
+
+
+# src\spoofers\guid_spoofer\guid_paths.py
+
+# TODO: Implement
+
+
+# src\spoofers\guid_spoofer\guid_spoofer.py
+
+# TODO: Implement
+
+
+# src\spoofers\hwid_spoofer\hwid_paths.py
+
+# TODO: Implement
+
+
+# src\spoofers\hwid_spoofer\hwid_spoofer.py
+
+# TODO: Implement
+
+
+# src\spoofers\mac_spoofer\mac_paths.py
+
+# TODO: Implement
+
+
+# src\spoofers\mac_spoofer\mac_spoofer.py
+
+# TODO: Implement
+
+
+# src\spoofers\mac_spoofer\network_utils.py
+
+# TODO: Implement
+
+
+# src\ui\login_window.py
+
+# TODO: Implement
+
+
+# src\ui\main_window.py
+
+from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout,
+                              QHBoxLayout, QStatusBar, QMessageBox)
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QFont
+import os
+
+from src.ui.components.sidebar import Sidebar
+from src.ui.components.dashboard import Dashboard
+from src.ui.components.particles import ParticleSystem
+
+class MainWindow(QMainWindow):
+    def __init__(self, spoofer_controller):
+        super().__init__()
+        self.controller = spoofer_controller
+        self.current_page = "dashboard"
+
+        self.setup_window()
+        QTimer.singleShot(100, self.initialize_ui)
+
+    def setup_window(self):
+        """Configuração da janela principal"""
+        self.setWindowTitle("Lunar Spoofer - Advanced System Protection")
+        self.setGeometry(100, 100, 1400, 900)
+        self.setMinimumSize(1200, 800)
+
+        # Estilo mínimo inicial
+        self.setStyleSheet("background-color: #000000; color: white;")
+
+        self.center_on_screen()
+
+    def center_on_screen(self):
+        """Centraliza a janela"""
+        screen = self.screen().availableGeometry()
+        window_size = self.frameGeometry()
+        self.move(
+            (screen.width() - window_size.width()) // 2,
+            (screen.height() - window_size.height()) // 2
+        )
+
+    def initialize_ui(self):
+        """Inicializa a UI com partículas"""
+        try:
+            self.setup_ui()
+            self.load_stylesheet()
+            print("Interface Lunar com particulas carregada")
+        except Exception as e:
+            print(f"Erro na UI: {e}")
+            self.setup_fallback_ui()
+
+    def setup_ui(self):
+        """Configura a interface completa com partículas de fundo"""
+        # Widget central
+        central_widget = QWidget()
+        central_widget.setObjectName("centralWidget")
+        self.setCentralWidget(central_widget)
+
+        # Layout principal
+        main_layout = QHBoxLayout(central_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # Sistema de partículas como fundo
+        self.particle_system = ParticleSystem(central_widget)
+        self.particle_system.lower()  # Garante que fique atrás de tudo
+
+        # Sidebar
+        self.sidebar = Sidebar()
+        main_layout.addWidget(self.sidebar)
+
+        # Área de conteúdo
+        self.content_stack = QWidget()
+        self.content_stack.setObjectName("contentStack")
+        content_layout = QVBoxLayout(self.content_stack)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
+
+        # Dashboard
+        self.dashboard = Dashboard(self.controller)
+        content_layout.addWidget(self.dashboard)
+
+        main_layout.addWidget(self.content_stack)
+
+        # Conectar navegação
+        self.sidebar.navigation_changed.connect(self.on_navigation_changed)
+
+        # Barra de status
+        self.setup_status_bar()
+
+    def on_navigation_changed(self, page_id):
+        """Handler de navegação"""
+        self.current_page = page_id
+
+        status_messages = {
+            "dashboard": "Dashboard - System overview and security controls",
+            "tools": "Tools - Advanced system utilities",
+            "system_info": "System Info - Hardware and software information",
+            "settings": "Settings - Application configuration",
+            "discord": "Discord - Contact and support information"
+        }
+
+        self.statusBar().showMessage(status_messages.get(page_id, "System ready"))
+        print(f"Navegando para: {page_id}")
+
+    def setup_fallback_ui(self):
+        """UI de fallback"""
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+
+        layout = QVBoxLayout(central_widget)
+        error_label = QLabel("System interface compatibility mode")
+        error_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(error_label)
+
+    def setup_status_bar(self):
+        """Configura barra de status"""
+        status_bar = QStatusBar()
+        status_bar.showMessage("Lunar Spoofer initialized - Particle system active")
+        self.setStatusBar(status_bar)
+
+    def load_stylesheet(self):
+        """Carrega CSS atualizado"""
+        try:
+            css_path = os.path.join(os.path.dirname(__file__), 'styles', 'main.css')
+            if os.path.exists(css_path):
+                with open(css_path, 'r', encoding='utf-8') as f:
+                    self.setStyleSheet(f.read())
+                print("CSS estelar com particulas aplicado")
+            else:
+                self.apply_fallback_styles()
+        except Exception as e:
+            print(f"CSS error: {e}")
+            self.apply_fallback_styles()
+
+    def apply_fallback_styles(self):
+        """Estilos de fallback"""
+        fallback_css = """
+            QMainWindow {
+                background-color: #000000;
+                color: #ffffff;
+                font-family: "Segoe UI";
+            }
+            QStatusBar {
+                background-color: #1a1a1a;
+                color: #b0b0b0;
+                padding: 8px;
+            }
+        """
+        self.setStyleSheet(fallback_css)
+
+    def closeEvent(self, event):
+        """Handler de fechamento"""
+        reply = QMessageBox.question(
+            self, 'Exit Confirmation',
+            'Are you sure you want to exit Lunar Spoofer?',
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            event.accept()
+        else:
+            event.ignore()
+
+
+# src\ui\adapters\controller_adapter.py
+
+# TODO: Implement
+
+
+# src\ui\adapters\theme_manager.py
+
+# TODO: Implement
+
+
+# src\ui\components\dashboard.py
+
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+                              QFrame, QPushButton, QProgressBar, QGridLayout)
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QFont
+import psutil
+
+from src.ui.components.switch import SwitchButton
+
+class Dashboard(QWidget):
+    def __init__(self, controller=None):
+        super().__init__()
+        self.controller = controller
+        self.switch_states = {
+            "mac": False,
+            "guid": False,
+            "hwid": False
+        }
+        self.setup_ui()
+        self.setup_timers()
+
+    def setup_ui(self):
+        """Configura dashboard com layout compacto"""
+        self.setObjectName("dashboard")
+
+        # Layout principal
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(25, 25, 25, 25)
+        main_layout.setSpacing(20)
+
+        # Header de estatísticas
+        stats_header = self.create_stats_header()
+        main_layout.addWidget(stats_header)
+
+        # Área de conteúdo
+        content_area = self.create_content_area()
+        main_layout.addWidget(content_area)
+
+    def create_stats_header(self):
+        """Cria header de estatísticas elegante"""
+        header_frame = QFrame()
+        header_frame.setObjectName("statsHeader")
+        header_frame.setFixedHeight(100)
+
+        layout = QGridLayout(header_frame)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setHorizontalSpacing(12)
+        layout.setVerticalSpacing(0)
+
+        # Cartões de sistema
+        self.cpu_card = self.create_stat_card("CPU", "0%", 0, "#ffffff")
+        self.memory_card = self.create_stat_card("MEMORY", "0%", 0, "#f0f0f0")
+        self.disk_card = self.create_stat_card("DISK", "0%", 0, "#e0e0e0")
+        self.status_card = self.create_status_card()
+
+        layout.addWidget(self.cpu_card, 0, 0)
+        layout.addWidget(self.memory_card, 0, 1)
+        layout.addWidget(self.disk_card, 0, 2)
+        layout.addWidget(self.status_card, 0, 3)
+
+        return header_frame
+
+    def create_stat_card(self, title, value, progress, color):
+        """Cria cartão de estatística minimalista"""
+        card = QFrame()
+        card.setObjectName("statCard")
+        card.setFixedHeight(80)
+
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(15, 12, 15, 12)
+        layout.setSpacing(6)
+
+        # Título
+        title_label = QLabel(title)
+        title_label.setObjectName("statTitle")
+        title_label.setFont(QFont("Segoe UI", 9))
+
+        # Valor
+        value_label = QLabel(value)
+        value_label.setObjectName("statValue")
+        value_label.setFont(QFont("Segoe UI", 14, QFont.Bold))
+
+        # Barra de progresso sutil
+        progress_bar = QProgressBar()
+        progress_bar.setObjectName("statProgress")
+        progress_bar.setValue(progress)
+        progress_bar.setFixedHeight(3)
+        progress_bar.setTextVisible(False)
+
+        # Aplicar cor
+        progress_bar.setProperty("progressColor", color)
+        value_label.setProperty("valueColor", color)
+
+        layout.addWidget(title_label)
+        layout.addWidget(value_label)
+        layout.addWidget(progress_bar)
+
+        return card
+
+    def create_status_card(self):
+        """Cria cartão de status elegante"""
+        card = QFrame()
+        card.setObjectName("statusCard")
+        card.setFixedHeight(80)
+
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(15, 12, 15, 12)
+        layout.setSpacing(6)
+
+        # Título
+        title_label = QLabel("STATUS")
+        title_label.setObjectName("statTitle")
+        title_label.setFont(QFont("Segoe UI", 9))
+
+        # Conteúdo do status
+        status_content = QWidget()
+        status_layout = QHBoxLayout(status_content)
+        status_layout.setContentsMargins(0, 0, 0, 0)
+        status_layout.setSpacing(8)
+
+        # Indicador de status
+        self.status_dot = QLabel("●")
+        self.status_dot.setObjectName("statusDot")
+        self.status_dot.setFont(QFont("Segoe UI", 12))
+
+        # Texto do status
+        self.status_text = QLabel("System Ready")
+        self.status_text.setObjectName("statusText")
+        self.status_text.setFont(QFont("Segoe UI", 11, QFont.Bold))
+
+        status_layout.addWidget(self.status_dot)
+        status_layout.addWidget(self.status_text)
+        status_layout.addStretch(1)
+
+        layout.addWidget(title_label)
+        layout.addWidget(status_content)
+
+        return card
+
+    def create_content_area(self):
+        """Cria área de conteúdo principal"""
+        content_frame = QFrame()
+        content_frame.setObjectName("contentFrame")
+
+        layout = QHBoxLayout(content_frame)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(20)
+
+        # Painel de ações principal (esquerda)
+        action_panel = self.create_action_panel()
+        layout.addWidget(action_panel)
+
+        # Painel de módulos compacto (direita)
+        modules_panel = self.create_compact_modules_panel()
+        layout.addWidget(modules_panel)
+
+        return content_frame
+
+    def create_action_panel(self):
+        """Cria painel de ações principal"""
+        action_frame = QFrame()
+        action_frame.setObjectName("actionPanel")
+
+        layout = QVBoxLayout(action_frame)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(20)
+
+        # Container do botão principal
+        button_container = QFrame()
+        button_container.setObjectName("buttonContainer")
+        button_container.setFixedHeight(180)
+
+        button_layout = QVBoxLayout(button_container)
+        button_layout.setAlignment(Qt.AlignCenter)
+        button_layout.setSpacing(15)
+
+        # Botão de spoofing principal
+        self.spoof_button = QPushButton("START SPOOFING")
+        self.spoof_button.setObjectName("mainSpoofButton")
+        self.spoof_button.setCursor(Qt.PointingHandCursor)
+        self.spoof_button.setFixedHeight(52)
+        self.spoof_button.clicked.connect(self.on_spoof_button_click)
+
+        # Status do spoofing
+        self.spoof_status = QLabel("System ready for spoofing protocol")
+        self.spoof_status.setObjectName("spoofStatus")
+        self.spoof_status.setAlignment(Qt.AlignCenter)
+        self.spoof_status.setWordWrap(True)
+
+        button_layout.addWidget(self.spoof_button)
+        button_layout.addWidget(self.spoof_status)
+
+        layout.addWidget(button_container)
+        layout.addStretch(1)
+
+        return action_frame
+
+    def create_compact_modules_panel(self):
+        """Cria painel de módulos ultra compacto com switches"""
+        modules_frame = QFrame()
+        modules_frame.setObjectName("modulesPanel")
+        modules_frame.setFixedWidth(280)  # Largura fixa para compactação
+        modules_frame.setFixedHeight(160)  # Altura compacta
+
+        layout = QVBoxLayout(modules_frame)
+        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(12)
+
+        # Título
+        title = QLabel("SPOOFING MODULES")
+        title.setObjectName("modulesTitle")
+        title.setFont(QFont("Segoe UI", 12, QFont.Bold))
+
+        layout.addWidget(title)
+
+        # Container dos switches
+        switches_container = QWidget()
+        switches_layout = QVBoxLayout(switches_container)
+        switches_layout.setContentsMargins(0, 0, 0, 0)
+        switches_layout.setSpacing(8)
+
+        # Módulos com switches
+        modules_data = [
+            ("MAC Address Spoofing", "mac"),
+            ("GUID Spoofing", "guid"),
+            ("HWID Spoofing", "hwid")
+        ]
+
+        self.module_switches = {}
+
+        for module_name, module_id in modules_data:
+            switch_widget = self.create_switch_row(module_name, module_id)
+            switches_layout.addWidget(switch_widget)
+            self.module_switches[module_id] = switch_widget.findChild(SwitchButton)
+
+        layout.addWidget(switches_container)
+        layout.addStretch(1)
+
+        return modules_frame
+
+    def create_switch_row(self, name, module_id):
+        """Cria uma linha compacta com switch"""
+        row_widget = QWidget()
+        row_widget.setObjectName(f"switchRow_{module_id}")
+        row_widget.setFixedHeight(32)
+
+        layout = QHBoxLayout(row_widget)
+        layout.setContentsMargins(5, 0, 5, 0)
+        layout.setSpacing(10)
+
+        # Nome do módulo
+        name_label = QLabel(name)
+        name_label.setObjectName("moduleName")
+        name_label.setFont(QFont("Segoe UI", 10))
+
+        # Switch
+        switch = SwitchButton()
+        switch.setObjectName(f"moduleSwitch_{module_id}")
+        switch.toggled.connect(lambda checked, mid=module_id: self.on_module_toggled(mid, checked))
+
+        layout.addWidget(name_label)
+        layout.addStretch(1)
+        layout.addWidget(switch)
+
+        return row_widget
+
+    def on_module_toggled(self, module_id, checked):
+        """Handler para toggle dos módulos"""
+        self.switch_states[module_id] = checked
+        status = "ENABLED" if checked else "DISABLED"
+        print(f"Module {module_id}: {status}")
+
+        # Atualizar interface baseada no estado
+        self.update_module_states()
+
+    def update_module_states(self):
+        """Atualiza estados visuais dos módulos"""
+        # Aqui você pode adicionar lógica para atualizar a interface
+        # baseada nos estados dos switches
+        enabled_count = sum(1 for state in self.switch_states.values() if state)
+        self.status_text.setText(f"{enabled_count} modules enabled")
+
+    def setup_timers(self):
+        """Configura timers para atualização em tempo real"""
+        self.stats_timer = QTimer()
+        self.stats_timer.timeout.connect(self.update_system_stats)
+        self.stats_timer.start(2000)
+        self.update_system_stats()
+
+    def update_system_stats(self):
+        """Atualiza estatísticas do sistema"""
+        try:
+            # CPU
+            cpu_percent = psutil.cpu_percent(interval=0.1)
+            self.update_stat_card(self.cpu_card, f"{cpu_percent:.1f}%", int(cpu_percent))
+
+            # Memória
+            memory = psutil.virtual_memory()
+            memory_percent = memory.percent
+            self.update_stat_card(self.memory_card, f"{memory_percent:.1f}%", int(memory_percent))
+
+            # Disco
+            try:
+                disk = psutil.disk_usage('C:')
+                disk_percent = disk.percent
+                self.update_stat_card(self.disk_card, f"{disk_percent:.1f}%", int(disk_percent))
+            except:
+                self.update_stat_card(self.disk_card, "N/A", 0)
+
+        except Exception as e:
+            print(f"Stats update error: {e}")
+
+    def update_stat_card(self, card, value, progress):
+        """Atualiza cartão de estatística"""
+        value_label = card.findChild(QLabel, "statValue")
+        progress_bar = card.findChild(QProgressBar)
+
+        if value_label:
+            value_label.setText(value)
+        if progress_bar:
+            progress_bar.setValue(progress)
+
+    def on_spoof_button_click(self):
+        """Handler do botão de spoofing"""
+        # Coletar estados dos switches
+        enabled_modules = [mid for mid, state in self.switch_states.items() if state]
+
+        if not enabled_modules:
+            self.spoof_status.setText("No modules enabled for spoofing")
+            return
+
+        self.spoof_button.setText("PROCESSING...")
+        self.spoof_button.setEnabled(False)
+        self.spoof_status.setText(f"Executing: {', '.join(enabled_modules)}")
+
+        # Simular processamento
+        QTimer.singleShot(3000, self.reset_spoof_button)
+
+    def reset_spoof_button(self):
+        """Reseta botão após processamento"""
+        self.spoof_button.setText("START SPOOFING")
+        self.spoof_button.setEnabled(True)
+        self.spoof_status.setText("Security protocol completed")
+
+        QTimer.singleShot(2000, lambda: self.spoof_status.setText("System ready for spoofing protocol"))
+
+
+# src\ui\components\hardware_tab.py
+
+# TODO: Implement
+
+
+# src\ui\components\network_selector.py
+
+# TODO: Implement
+
+
+# src\ui\components\particles.py
+
+import random
+import math
+from PySide6.QtWidgets import QWidget
+from PySide6.QtCore import Qt, QTimer, QPointF
+from PySide6.QtGui import QPainter, QColor, QPen, QBrush, QRadialGradient
+
+class Particle:
+    def __init__(self, x, y, size, color, speed_x, speed_y, opacity):
+        self.x = x
+        self.y = y
+        self.size = size
+        self.color = color
+        self.speed_x = speed_x
+        self.speed_y = speed_y
+        self.opacity = opacity
+        self.original_opacity = opacity
+        self.fade_direction = random.choice([-1, 1])
+        self.fade_speed = random.uniform(0.005, 0.02)
+
+class ParticleSystem(QWidget):
+    def __init__(self, parent=None, particle_count=80):
+        super().__init__(parent)
+        self.particles = []
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_particles)
+        self.timer.start(16)  # ~60 FPS
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+
+        # Inicializar partículas
+        self.init_particles(particle_count)
+
+    def init_particles(self, count):
+        width = self.width() if self.width() > 0 else 800
+        height = self.height() if self.height() > 0 else 600
+
+        # Cores estelares - tons de branco e azul claro
+        colors = [
+            QColor(255, 255, 255),  # Branco puro
+            QColor(240, 240, 255),  # Branco azulado
+            QColor(255, 255, 240),  # Branco amarelado (estrelas quentes)
+            QColor(220, 230, 255),  # Azul muito claro
+            QColor(255, 240, 220),  # Laranja muito claro
+        ]
+
+        for _ in range(count):
+            x = random.uniform(0, width)
+            y = random.uniform(0, height)
+            size = random.uniform(1.0, 3.0)
+            color = random.choice(colors)
+
+            # Velocidade baseada no tamanho (partículas maiores se movem mais devagar)
+            base_speed = 0.3
+            speed_factor = 1.0 / (size * 0.8)
+            speed_x = random.uniform(-base_speed, base_speed) * speed_factor
+            speed_y = random.uniform(-base_speed, base_speed) * speed_factor
+
+            opacity = random.uniform(0.2, 0.8)
+
+            self.particles.append(Particle(x, y, size, color, speed_x, speed_y, opacity))
+
+    def update_particles(self):
+        if not self.isVisible():
+            return
+
+        width = self.width()
+        height = self.height()
+
+        for particle in self.particles:
+            # Atualizar posição
+            particle.x += particle.speed_x
+            particle.y += particle.speed_y
+
+            # Efeito de fade pulsante
+            particle.opacity += particle.fade_speed * particle.fade_direction
+            if particle.opacity >= particle.original_opacity:
+                particle.opacity = particle.original_opacity
+                particle.fade_direction = -1
+            elif particle.opacity <= 0.1:
+                particle.opacity = 0.1
+                particle.fade_direction = 1
+
+            # Reposicionar partículas que saem da tela
+            if particle.x < -10:
+                particle.x = width + 10
+            elif particle.x > width + 10:
+                particle.x = -10
+
+            if particle.y < -10:
+                particle.y = height + 10
+            elif particle.y > height + 10:
+                particle.y = -10
+
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        for particle in self.particles:
+            # Criar gradiente radial para efeito de brilho
+            gradient = QRadialGradient(particle.x, particle.y, particle.size * 2)
+            color = QColor(particle.color)
+            color.setAlphaF(particle.opacity)
+            gradient.setColorAt(0, color)
+            gradient.setColorAt(1, QColor(255, 255, 255, 0))
+
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QBrush(gradient))
+            painter.drawEllipse(QPointF(particle.x, particle.y), particle.size * 2, particle.size * 2)
+
+            # Núcleo da partícula
+            core_color = QColor(255, 255, 255)
+            core_color.setAlphaF(particle.opacity * 1.5)
+            painter.setBrush(QBrush(core_color))
+            painter.drawEllipse(QPointF(particle.x, particle.y), particle.size * 0.5, particle.size * 0.5)
+
+    def resizeEvent(self, event):
+        # Ajustar partículas para novo tamanho
+        if event.oldSize().width() > 0 and event.oldSize().height() > 0:
+            scale_x = event.size().width() / event.oldSize().width()
+            scale_y = event.size().height() / event.oldSize().height()
+
+            for particle in self.particles:
+                particle.x *= scale_x
+                particle.y *= scale_y
+
+        super().resizeEvent(event)
+
+
+# src\ui\components\progress_indicator.py
+
+# TODO: Implement
+
+
+# src\ui\components\sidebar.py
+
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QPushButton,
+                              QLabel, QFrame, QSizePolicy)
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QFont, QPixmap, QPainter, QLinearGradient, QColor
+import os
+
+class Sidebar(QWidget):
+    navigation_changed = Signal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.current_page = "dashboard"
+        self.setup_ui()
+
+    def setup_ui(self):
+        """Configura a sidebar minimalista"""
+        self.setFixedWidth(260)
+        self.setObjectName("sidebar")
+
+        # Layout principal
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # Header elegante
+        header = self.create_header()
+        layout.addWidget(header)
+
+        # Navegação limpa
+        nav_buttons = self.create_navigation_buttons()
+        layout.addWidget(nav_buttons)
+
+        # Espaço flexível
+        layout.addStretch(1)
+
+        # Footer minimalista
+        footer = self.create_footer()
+        layout.addWidget(footer)
+
+    def create_header(self):
+        """Cria cabeçalho minimalista"""
+        header_frame = QFrame()
+        header_frame.setObjectName("sidebarHeader")
+        header_frame.setFixedHeight(100)
+
+        layout = QVBoxLayout(header_frame)
+        layout.setContentsMargins(20, 20, 20, 15)
+
+        # Logo elegante
+        logo_label = QLabel("LUNAR")
+        logo_label.setObjectName("logoLabel")
+        logo_label.setAlignment(Qt.AlignCenter)
+        logo_label.setFont(QFont("Segoe UI", 18, QFont.Bold))
+
+        # Subtítulo sutil
+        subtitle_label = QLabel("SYSTEM PROTECTION")
+        subtitle_label.setObjectName("subtitleLabel")
+        subtitle_label.setAlignment(Qt.AlignCenter)
+        subtitle_label.setFont(QFont("Segoe UI", 8))
+
+        layout.addWidget(logo_label)
+        layout.addWidget(subtitle_label)
+
+        return header_frame
+
+    def create_navigation_buttons(self):
+        """Cria botões de navegação minimalistas"""
+        nav_frame = QFrame()
+        nav_frame.setObjectName("navFrame")
+
+        layout = QVBoxLayout(nav_frame)
+        layout.setContentsMargins(15, 10, 15, 10)
+        layout.setSpacing(2)
+
+        # Botões atualizados conforme solicitado
+        nav_items = [
+            ("Dashboard", "dashboard", True),
+            ("Tools", "tools", False),
+            ("System Info", "system_info", False),
+            ("Settings", "settings", False),
+            ("Discord", "discord", False)
+        ]
+
+        self.nav_buttons = {}
+
+        for text, page_id, is_active in nav_items:
+            btn = QPushButton(text)
+            btn.setObjectName(f"navButton_{page_id}")
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setFixedHeight(42)
+            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+            # Estilo minimalista
+            btn.setProperty("class", "nav-btn")
+
+            # Conectar sinal
+            btn.clicked.connect(lambda checked, pid=page_id: self.on_navigation_click(pid))
+
+            # Estado ativo
+            if is_active:
+                self.set_button_active(btn, True)
+
+            layout.addWidget(btn)
+            self.nav_buttons[page_id] = btn
+
+        return nav_frame
+
+    def create_footer(self):
+        """Cria rodapé minimalista"""
+        footer_frame = QFrame()
+        footer_frame.setObjectName("footerFrame")
+        footer_frame.setFixedHeight(80)
+
+        layout = QVBoxLayout(footer_frame)
+        layout.setContentsMargins(15, 10, 15, 15)
+        layout.setSpacing(8)
+
+        # Versão
+        version_label = QLabel("v1.0.0")
+        version_label.setObjectName("versionLabel")
+        version_label.setAlignment(Qt.AlignCenter)
+        version_label.setFont(QFont("Segoe UI", 8))
+
+        # Status
+        status_label = QLabel("● READY")
+        status_label.setObjectName("statusLabel")
+        status_label.setAlignment(Qt.AlignCenter)
+        status_label.setFont(QFont("Segoe UI", 9, QFont.Bold))
+
+        layout.addStretch(1)
+        layout.addWidget(status_label)
+        layout.addWidget(version_label)
+
+        return footer_frame
+
+    def on_navigation_click(self, page_id):
+        """Handler para navegação"""
+        # Atualizar estados dos botões
+        for pid, btn in self.nav_buttons.items():
+            self.set_button_active(btn, pid == page_id)
+
+        self.current_page = page_id
+        self.navigation_changed.emit(page_id)
+
+    def set_button_active(self, button, active):
+        """Define estado ativo do botão"""
+        button.setProperty("active", "true" if active else "false")
+        button.style().unpolish(button)
+        button.style().polish(button)
+
+
+# src\ui\components\software_tab.py
+
+# TODO: Implement
+
+
+# src\ui\components\spoofing_panel.py
+
+# TODO: Implement
+
+
+# src\ui\components\switch.py
+
+from PySide6.QtWidgets import QWidget
+from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, Signal, Property
+from PySide6.QtGui import QPainter, QColor, QPen, QBrush
+
+class SwitchButton(QWidget):
+    toggled = Signal(bool)
+
+    def __init__(self, parent=None, width=50, height=24):
+        super().__init__(parent)
+        self._checked = False
+        self._circle_position = 3
+        self._width = width
+        self._height = height
+
+        # Animação
+        self._animation = QPropertyAnimation(self, b"circle_position")
+        self._animation.setDuration(200)
+        self._animation.setEasingCurve(QEasingCurve.InOutQuad)
+
+        self.setFixedSize(self._width, self._height)
+        self.setCursor(Qt.PointingHandCursor)
+
+    def get_circle_position(self):
+        return self._circle_position
+
+    def set_circle_position(self, pos):
+        self._circle_position = pos
+        self.update()
+
+    circle_position = Property(float, get_circle_position, set_circle_position)
+
+    def isChecked(self):
+        return self._checked
+
+    def setChecked(self, checked):
+        if self._checked != checked:
+            self._checked = checked
+            self.toggled.emit(checked)
+            self.animate_switch(checked)
+
+    def animate_switch(self, checked):
+        start = 3
+        end = self._width - 21  # width - (circle diameter + margin)
+        if not checked:
+            start, end = end, start
+
+        self._animation.setStartValue(start)
+        self._animation.setEndValue(end)
+        self._animation.start()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Fundo do switch
+        if self._checked:
+            bg_color = QColor("#4a90e2")  # Azul quando ativo
+            border_color = QColor("#357abd")
+        else:
+            bg_color = QColor("#333333")  # Cinza quando inativo
+            border_color = QColor("#555555")
+
+        # Desenhar fundo
+        painter.setPen(QPen(border_color, 1))
+        painter.setBrush(QBrush(bg_color))
+        painter.drawRoundedRect(0, 0, self._width, self._height, self._height // 2, self._height // 2)
+
+        # Círculo deslizante
+        circle_color = QColor("#ffffff")
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(circle_color))
+        painter.drawEllipse(int(self._circle_position), 3, 18, 18)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.setChecked(not self._checked)
+
+    def enterEvent(self, event):
+        self.setCursor(Qt.PointingHandCursor)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self.setCursor(Qt.ArrowCursor)
+        super().leaveEvent(event)
+
+
+# src\ui\components\system_stats.py
+
+# TODO: Implement
+
+
+# src\ui\components\toast_notification.py
+
+# TODO: Implement
+
+
+# src\ui\styles\main.css
+
+/* ===== VARIÁVEIS DO TEMA ESTELAR ATUALIZADO ===== */
+:root {
+    /* Cores principais - Branco/Cinza sobre Preto */
+    --stellar-white: #ffffff;
+    --stellar-light: #f0f0f0;
+    --stellar-gray: #b0b0b0;
+    --stellar-dark: #888888;
+
+    /* Cores de fundo - Preto profundo */
+    --void-black: #000000;
+    --cosmic-gray: #0a0a0a;
+    --space-dark: #111111;
+    --graphite-100: #1a1a1a;
+    --graphite-200: #222222;
+    --graphite-300: #2a2a2a;
+
+    /* Acentos estelares */
+    --star-blue: #4a90e2;
+    --nebula-cyan: #50e3c2;
+    --comet-purple: #6b21ff;
+
+    /* Efeitos de brilho */
+    --starlight: 0 0 15px rgba(255, 255, 255, 0.3);
+    --supernova: 0 0 30px rgba(74, 144, 226, 0.5);
+}
+
+/* ===== ESTILOS GERAIS ===== */
+QMainWindow {
+    background: var(--void-black);
+    color: var(--stellar-white);
+    font-family: "Segoe UI", "SF Pro Display", system-ui;
+    font-size: 13px;
+}
+
+QWidget {
+    background: transparent;
+    color: var(--stellar-white);
+}
+
+/* ===== SISTEMA DE PARTÍCULAS ===== */
+ParticleSystem {
+    background: transparent;
+    border: none;
+}
+
+/* ===== SIDEBAR ELEGANTE ===== */
+#sidebar {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 var(--graphite-100),
+                                stop:1 var(--graphite-200));
+    border-right: 1px solid var(--graphite-300);
+}
+
+#sidebarHeader {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 var(--graphite-200),
+                                stop:1 var(--graphite-300));
+    border-bottom: 1px solid var(--graphite-300);
+}
+
+#logoLabel {
+    color: var(--stellar-white);
+    background: transparent;
+    font-size: 18px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+#subtitleLabel {
+    color: var(--stellar-gray);
+    background: transparent;
+    font-size: 8px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+#navFrame {
+    background: transparent;
+    border: none;
+}
+
+QPushButton[navButton] {
+    background: transparent;
+    color: var(--stellar-gray);
+    border: none;
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: left;
+}
+
+QPushButton[navButton]:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--stellar-white);
+    border-left: 2px solid var(--stellar-white);
+}
+
+QPushButton[navButton][active="true"] {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--stellar-white);
+    border-left: 2px solid var(--stellar-white);
+    font-weight: 600;
+}
+
+#footerFrame {
+    background: rgba(26, 26, 26, 0.8);
+    border-top: 1px solid var(--graphite-300);
+    border-radius: 8px 8px 0 0;
+}
+
+#versionLabel {
+    color: var(--stellar-dark);
+    background: transparent;
+    font-size: 8px;
+}
+
+#statusLabel {
+    color: var(--nebula-cyan);
+    background: transparent;
+    font-size: 9px;
+    font-weight: bold;
+}
+
+/* ===== DASHBOARD PROFISSIONAL ===== */
+#dashboard {
+    background: transparent;
+}
+
+/* Header de estatísticas */
+#statsHeader {
+    background: transparent;
+    border: none;
+}
+
+#statCard, #statusCard {
+    background: rgba(26, 26, 26, 0.7);
+    border: 1px solid var(--graphite-300);
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+}
+
+#statCard:hover, #statusCard:hover {
+    border: 1px solid var(--stellar-white);
+    box-shadow: var(--starlight);
+}
+
+#statTitle {
+    color: var(--stellar-gray);
+    background: transparent;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#statValue {
+    color: var(--stellar-white);
+    background: transparent;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+#statValue[valueColor] {
+    color: attr(valueColor);
+}
+
+#statProgress {
+    background: var(--graphite-200);
+    border: none;
+    border-radius: 2px;
+    height: 3px;
+}
+
+#statProgress::chunk {
+    background: var(--stellar-white);
+    border-radius: 2px;
+}
+
+#statProgress[progressColor]::chunk {
+    background-color: attr(progressColor);
+}
+
+#statusDot {
+    color: var(--nebula-cyan);
+    background: transparent;
+    font-size: 10px;
+}
+
+#statusText {
+    color: var(--stellar-white);
+    background: transparent;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* Painéis principais */
+#actionPanel, #modulesPanel {
+    background: transparent;
+}
+
+#buttonContainer {
+    background: rgba(26, 26, 26, 0.7);
+    border: 1px solid var(--graphite-300);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+}
+
+#mainSpoofButton {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 var(--stellar-white),
+                                stop:1 var(--stellar-light));
+    color: var(--void-black);
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 15px 30px;
+    letter-spacing: 0.5px;
+}
+
+#mainSpoofButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 var(--stellar-light),
+                                stop:1 var(--stellar-white));
+    box-shadow: var(--starlight);
+}
+
+#mainSpoofButton:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 var(--stellar-gray),
+                                stop:1 var(--stellar-light));
+}
+
+#mainSpoofButton:disabled {
+    background: var(--graphite-200);
+    color: var(--stellar-dark);
+    box-shadow: none;
+}
+
+#spoofStatus {
+    color: var(--stellar-gray);
+    background: transparent;
+    font-size: 11px;
+    padding: 8px;
+}
+
+/* Módulos compactos com switches */
+#modulesPanel {
+    background: rgba(26, 26, 26, 0.7);
+    border: 1px solid var(--graphite-300);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+}
+
+#modulesTitle {
+    color: var(--stellar-white);
+    background: transparent;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+QFrame[switchRow] {
+    background: transparent;
+    border: none;
+}
+
+#moduleName {
+    color: var(--stellar-white);
+    background: transparent;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+/* Estilos para o SwitchButton customizado */
+SwitchButton {
+    background-color: #333333;
+    border: 1px solid #555555;
+    border-radius: 12px;
+}
+
+SwitchButton:checked {
+    background-color: #4a90e2;
+    border: 1px solid #357abd;
+}
+
+SwitchButton::handle {
+    background-color: #ffffff;
+    border: none;
+    border-radius: 9px;
+}
+
+/* ===== BARRA DE STATUS ESTELAR ===== */
+QStatusBar {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 var(--graphite-100),
+                                stop:1 var(--graphite-200));
+    color: var(--stellar-gray);
+    border-top: 1px solid var(--graphite-300);
+    padding: 8px 20px;
+    font-size: 10px;
+}
+
+QStatusBar::item {
+    border: none;
+}
+
+/* ===== SCROLLBARS MINIMALISTAS ===== */
+QScrollBar:vertical {
+    background: var(--graphite-100);
+    width: 8px;
+    margin: 0px;
+}
+
+QScrollBar::handle:vertical {
+    background: var(--stellar-gray);
+    border-radius: 4px;
+    min-height: 20px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: var(--stellar-white);
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+}
+
+
+# src\ui\styles\components\buttons.css
+
+/* TODO: Add styles */
+
+
+# src\ui\styles\components\cards.css
+
+/* TODO: Add styles */
+
+
+# src\ui\styles\components\logs.css
+
+/* TODO: Add styles */
+
+
+# src\ui\styles\components\progress.css
+
+/* TODO: Add styles */
+
+
+# src\ui\styles\components\sidebar.css
+
+/* TODO: Add styles */
+
+
+# src\ui\styles\components\tabs.css
+
+/* TODO: Add styles */
+
+
+# src\ui\styles\themes\cyan.css
+
+/* TODO: Add styles */
+
+
+# src\ui\styles\themes\dark.css
+
+/* TODO: Add styles */
+
+
+# src\ui\styles\themes\purple.css
+
+/* TODO: Add styles */
+
+
+# src\utils\admin_check.py
+
+# TODO: Implement
+
+
+# src\utils\hardware_reader.py
+
+class HardwareReader:
+    def __init__(self):
+        pass
+
+
+# src\utils\icon_manager.py
+
+# TODO: Implement
+
+
+# src\utils\logger.py
+
+# TODO: Implement
+
+
+# src\utils\registry_checker.py
+
+# TODO: Implement
+
+
+# tests\test_auth.py
+
+# TODO: Implement
+
+
+# tests\test_spoofers.py
+
+# TODO: Implement
+
+
+# tests\test_ui.py
+
+# TODO: Implement
+
+
