@@ -35,16 +35,18 @@ class HeaderBar(QFrame):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
 
-        title = QLabel("LUNAR SYSTEM PROTECTION")
-        title.setObjectName("headerTitle")
-        title.setFont(QFont("Segoe UI", 16, QFont.Bold))
+        # Título removido conforme solicitado
+        # title = QLabel("LUNAR SYSTEM PROTECTION")
+        # title.setObjectName("headerTitle")
+        # title.setFont(QFont("Segoe UI", 16, QFont.Bold))
 
-        subtitle = QLabel("Advanced Security Suite")
-        subtitle.setObjectName("headerSubtitle")
-        subtitle.setFont(QFont("Segoe UI", 10))
+        # Subtítulo removido conforme solicitado
+        # subtitle = QLabel("Advanced Security Suite")
+        # subtitle.setObjectName("headerSubtitle")
+        # subtitle.setFont(QFont("Segoe UI", 10))
 
-        layout.addWidget(title)
-        layout.addWidget(subtitle)
+        # layout.addWidget(title)
+        # layout.addWidget(subtitle)
 
         return section
 

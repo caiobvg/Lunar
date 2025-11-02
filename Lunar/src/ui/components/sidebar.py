@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (QFrame, QVBoxLayout, QPushButton,
                               QLabel, QSizePolicy)
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont, QPixmap, QPainter, QLinearGradient, QColor
+from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtGui import QFont, QPixmap, QPainter, QLinearGradient, QColor, QIcon
 import os
 
 class Sidebar(QFrame):
@@ -14,7 +14,7 @@ class Sidebar(QFrame):
 
     def setup_ui(self):
         """Configura a sidebar mais estreita"""
-        self.setFixedWidth(150)  # Reduzida de 260 para 200
+        self.setFixedWidth(120)  # Reduzida de 260 para 200
         self.setObjectName("sidebar")
 
         # Layout principal
@@ -23,6 +23,10 @@ class Sidebar(QFrame):
         layout.setSpacing(0)
 
         # Header removido (agora está no HeaderBar)
+
+        # Logo no topo
+        logo_header = self.create_logo_header()
+        layout.addWidget(logo_header)
 
         # Navegação limpa
         nav_buttons = self.create_navigation_buttons()
@@ -61,6 +65,32 @@ class Sidebar(QFrame):
 
         return header_frame
 
+    def create_logo_header(self):
+        """Cria o header da sidebar com o logo"""
+        logo_label = QLabel()
+        logo_label.setObjectName("sidebarLogo")
+        logo_label.setFixedHeight(80) # Altura similar ao header_bar
+        logo_label.setAlignment(Qt.AlignCenter)
+
+        # Carregar ícone - caminho correto
+        icon_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'assets', 'icons', 'logo.png')
+
+        if not os.path.exists(icon_path):
+             # Fallback para pasta local de icons
+             icon_path = os.path.join(os.path.dirname(__file__), '..', 'icons', 'logo.png')
+
+        if os.path.exists(icon_path):
+            pixmap = QPixmap(icon_path)
+            pixmap = pixmap.scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            logo_label.setPixmap(pixmap)
+        else:
+            print(f"Logo não encontrado: {icon_path}")
+            logo_label.setText("LUNAR") # Fallback
+            logo_label.setFont(QFont("Segoe UI", 18, QFont.Bold))
+            logo_label.setStyleSheet("color: white;")
+
+        return logo_label
+
     def create_navigation_buttons(self):
         """Cria botões de navegação minimalistas"""
         nav_frame = QFrame()
@@ -68,25 +98,41 @@ class Sidebar(QFrame):
 
         layout = QVBoxLayout(nav_frame)
         layout.setContentsMargins(10, 20, 10, 20)  # Margens reduzidas
-        layout.setSpacing(2)
+        layout.setSpacing(6) # Espaçamento dobrado (3 -> 6)
 
         # Botões atualizados
         nav_items = [
-            ("Dashboard", "dashboard", True),
-            ("Security Tools", "tools", False),
-            ("System Info", "system_info", False),
-            ("Settings", "settings", False),
-            ("Support", "support", False)
+            # (Texto p/ ToolTip, page_id, icon_filename, is_active)
+            ("Dashboard", "dashboard", "dashboard.png", True),
+            ("Security Tools", "tools", "stools.png", False),
+            ("System Info", "system_info", "sinfo.png", False),
+            ("Settings", "settings", "settings.png", False),
+            ("Support", "support", "support.png", False)
         ]
 
         self.nav_buttons = {}
 
-        for text, page_id, is_active in nav_items:
-            btn = QPushButton(text)
+        for text, page_id, icon_name, is_active in nav_items:
+            btn = QPushButton() # Criar botão sem texto
+            btn.setToolTip(text) # Adicionar o texto como dica
             btn.setObjectName(f"navButton_{page_id}")
             btn.setCursor(Qt.PointingHandCursor)
-            btn.setFixedHeight(38)  # Altura reduzida
+            btn.setFixedHeight(108)  # Altura aumentada (72 -> 108)
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+            # Lógica para adicionar ícone
+            icon_path = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'assets', 'icons', icon_name)
+
+            if not os.path.exists(icon_path):
+                icon_path = os.path.join(os.path.dirname(__file__), '..', 'icons', icon_name)
+
+            if os.path.exists(icon_path):
+                pixmap = QPixmap(icon_path)
+                btn.setIcon(QIcon(pixmap))
+                btn.setIconSize(QSize(54, 54)) # Ícone aumentado (36 -> 54)
+            else:
+                print(f"Ícone de navegação não encontrado: {icon_path}")
+                btn.setText(text) # Fallback para texto se ícone falhar
 
             # Conectar sinal
             btn.clicked.connect(lambda checked, pid=page_id: self.on_navigation_click(pid))

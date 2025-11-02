@@ -60,32 +60,27 @@ class MainWindow(QMainWindow):
         central_widget.setObjectName("centralWidget")
         self.setCentralWidget(central_widget)
 
-        # Layout principal
-        main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
+        # Layout principal (REMOVIDO PARA PERMITIR SOBREPOSIÇÃO)
+        # main_layout = QVBoxLayout(central_widget)
+        # main_layout.setContentsMargins(0, 0, 0, 0)
+        # main_layout.setSpacing(0)
 
-        # Sistema de partículas como overlay transparente - AGORA PRIMEIRO
+        # Sistema de partículas como overlay transparente - FUNDO
         self.particle_system = ParticleSystem(central_widget)
-        self.particle_system.lower()  # Coloca atrás de todos os widgets
 
-        # HeaderBar no topo - AGORA DEPOIS DAS PARTÍCULAS
-        self.header_bar = HeaderBar()
-        main_layout.addWidget(self.header_bar)
+        # HeaderBar no topo
+        self.header_bar = HeaderBar(central_widget)
+        # main_layout.addWidget(self.header_bar)
 
-        # Área de conteúdo (sidebar + conteúdo)
-        content_area = QFrame()
-        content_area.setObjectName("contentArea")
-        content_layout = QHBoxLayout(content_area)
-        content_layout.setContentsMargins(0, 0, 0, 0)
-        content_layout.setSpacing(0)
-
-        # Sidebar
-        self.sidebar = Sidebar()
-        content_layout.addWidget(self.sidebar)
+        # Área de conteúdo (sidebar + conteúdo) - (REMOVIDO)
+        # content_area = QFrame()
+        # content_area.setObjectName("contentArea")
+        # content_layout = QHBoxLayout(content_area)
+        # content_layout.setContentsMargins(0, 0, 0, 0)
+        # content_layout.setSpacing(0)
 
         # Área de conteúdo principal
-        self.content_stack = QFrame()
+        self.content_stack = QFrame(central_widget)
         self.content_stack.setObjectName("contentStack")
         content_stack_layout = QVBoxLayout(self.content_stack)
         content_stack_layout.setContentsMargins(0, 0, 0, 0)
@@ -95,15 +90,22 @@ class MainWindow(QMainWindow):
         self.dashboard = Dashboard(self.controller)
         content_stack_layout.addWidget(self.dashboard)
 
-        content_layout.addWidget(self.content_stack)
+        # content_layout.addWidget(self.content_stack)
 
-        main_layout.addWidget(content_area)
+        # Sidebar (CAMADA SUPERIOR)
+        self.sidebar = Sidebar(central_widget)
+        # content_layout.addWidget(self.sidebar)
+
+        # main_layout.addWidget(content_area)
 
         # Barra de status
         self.setup_status_bar()
 
         # Conectar navegação
         self.sidebar.navigation_changed.connect(self.on_navigation_changed)
+
+        # Chamar a lógica de posicionamento pela primeira vez
+        self.update_geometries()
 
     def on_navigation_changed(self, page_id):
         """Handler de navegação"""
@@ -138,10 +140,47 @@ class MainWindow(QMainWindow):
         self.setStatusBar(status_bar)
 
     def resizeEvent(self, event):
-        """Garante que o sistema de partículas ocupe toda a área"""
+        """Gerencia a geometria dos componentes para sobreposição"""
         super().resizeEvent(event)
+        self.update_geometries()
+
+    def update_geometries(self):
+        """Posiciona os widgets manualmente para permitir sobreposição"""
+        w = self.width()
+        h = self.height()
+
+        # 1. Partículas (fundo)
         if hasattr(self, 'particle_system'):
-            self.particle_system.setGeometry(0, 0, self.width(), self.height())
+            self.particle_system.setGeometry(0, 0, w, h)
+            self.particle_system.lower()
+
+        # 2. Header
+        if hasattr(self, 'header_bar'):
+            # Pega a altura fixa (80)
+            header_height = self.header_bar.height()
+            self.header_bar.setGeometry(0, 0, w, header_height)
+
+        # 3. Content Stack (atrás da sidebar, abaixo do header)
+        if hasattr(self, 'content_stack'):
+            if hasattr(self, 'sidebar') and hasattr(self, 'header_bar'):
+                sidebar_width = self.sidebar.width() # Pega a largura fixa (150)
+                header_height = self.header_bar.height()
+
+                self.content_stack.setGeometry(
+                    sidebar_width,
+                    header_height,
+                    w - sidebar_width,
+                    h - header_height
+                )
+            else:
+                self.content_stack.setGeometry(0, 0, w, h)
+
+        # 4. Sidebar (topo)
+        if hasattr(self, 'sidebar'):
+            sidebar_width = self.sidebar.width() # Pega a largura fixa (150)
+            # A sidebar começa em (0, 0) e ocupa a altura total
+            self.sidebar.setGeometry(0, 0, sidebar_width, h)
+            self.sidebar.raise_() # Coloca a sidebar no topo
 
     def initialize_particles(self):
         """Inicializa e posiciona o sistema de partículas"""

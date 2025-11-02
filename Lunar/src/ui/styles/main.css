@@ -97,8 +97,7 @@ QWidget {
 
 /* ===== SIDEBAR - SEMI-TRANSPARENTE PARA VER PARTÍCULAS ===== */
 #sidebar {
-    background: rgba(30, 30, 30, 0.6);
-    border-right: 2px solid rgba(20, 20, 20, 0.5);
+    background: rgba(30, 30, 30, 0);
 }
 
 #navFrame {
