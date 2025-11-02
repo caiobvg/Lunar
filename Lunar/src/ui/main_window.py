@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout,
-                              QHBoxLayout, QStatusBar, QMessageBox)
+                              QHBoxLayout, QStatusBar, QMessageBox, QLabel)
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont
 import os
@@ -24,8 +24,8 @@ class MainWindow(QMainWindow):
         self.setGeometry(100, 100, 1400, 900)
         self.setMinimumSize(1200, 800)
 
-        # Estilo mínimo inicial
-        self.setStyleSheet("background-color: #000000; color: white;")
+        # Estilo mínimo inicial - CORRIGIDO para preto suave
+        self.setStyleSheet("background-color: #0d0d0d; color: white;")
 
         self.center_on_screen()
 
@@ -44,6 +44,10 @@ class MainWindow(QMainWindow):
             self.setup_ui()
             self.load_stylesheet()
             print("Interface Lunar com particulas carregada")
+
+            # Inicializar partículas após um pequeno delay
+            QTimer.singleShot(100, self.initialize_particles)
+
         except Exception as e:
             print(f"Erro na UI: {e}")
             self.setup_fallback_ui()
@@ -71,10 +75,6 @@ class MainWindow(QMainWindow):
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
 
-        # Sistema de partículas como fundo
-        self.particle_system = ParticleSystem(central_widget)
-        self.particle_system.lower()  # Garante que fique atrás de tudo
-
         # Sidebar (mais estreita)
         self.sidebar = Sidebar()
         content_layout.addWidget(self.sidebar)
@@ -94,11 +94,15 @@ class MainWindow(QMainWindow):
 
         main_layout.addWidget(content_area)
 
-        # Conectar navegação
-        self.sidebar.navigation_changed.connect(self.on_navigation_changed)
+        # Sistema de partículas como fundo - CORRIGIDO
+        # Agora o ParticleSystem é filho do central_widget e se expande
+        self.particle_system = ParticleSystem(central_widget)
 
         # Barra de status
         self.setup_status_bar()
+
+        # Conectar navegação
+        self.sidebar.navigation_changed.connect(self.on_navigation_changed)
 
     def on_navigation_changed(self, page_id):
         """Handler de navegação"""
@@ -130,6 +134,21 @@ class MainWindow(QMainWindow):
         status_bar = QStatusBar()
         status_bar.showMessage("Lunar Spoofer initialized - Carbon theme active")
         self.setStatusBar(status_bar)
+
+    def resizeEvent(self, event):
+        """Garante que o sistema de partículas ocupe toda a área"""
+        super().resizeEvent(event)
+        if hasattr(self, 'particle_system'):
+            # Fazer o sistema de partículas ocupar toda a área do centralWidget
+            self.particle_system.setGeometry(self.centralWidget().rect())
+
+    def initialize_particles(self):
+        """Inicializa e posiciona o sistema de partículas"""
+        if hasattr(self, 'particle_system'):
+            # Garantir que as partículas ocupem toda a área
+            self.particle_system.setGeometry(0, 0, self.width(), self.height())
+            # Forçar uma atualização
+            self.particle_system.update()
 
     def load_stylesheet(self):
         """Carrega CSS atualizado"""

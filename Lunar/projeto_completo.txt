@@ -355,7 +355,7 @@ class Config:
 # src\ui\main_window.py
 
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout,
-                              QHBoxLayout, QStatusBar, QMessageBox)
+                              QHBoxLayout, QStatusBar, QMessageBox, QLabel)
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont
 import os
@@ -363,6 +363,7 @@ import os
 from src.ui.components.sidebar import Sidebar
 from src.ui.components.dashboard import Dashboard
 from src.ui.components.particles import ParticleSystem
+from src.ui.components.header_bar import HeaderBar  # Novo componente
 
 class MainWindow(QMainWindow):
     def __init__(self, spoofer_controller):
@@ -379,8 +380,8 @@ class MainWindow(QMainWindow):
         self.setGeometry(100, 100, 1400, 900)
         self.setMinimumSize(1200, 800)
 
-        # Estilo mínimo inicial
-        self.setStyleSheet("background-color: #000000; color: white;")
+        # Estilo mínimo inicial - CORRIGIDO para preto suave
+        self.setStyleSheet("background-color: #0d0d0d; color: white;")
 
         self.center_on_screen()
 
@@ -399,6 +400,10 @@ class MainWindow(QMainWindow):
             self.setup_ui()
             self.load_stylesheet()
             print("Interface Lunar com particulas carregada")
+
+            # Inicializar partículas após um pequeno delay
+            QTimer.singleShot(100, self.initialize_particles)
+
         except Exception as e:
             print(f"Erro na UI: {e}")
             self.setup_fallback_ui()
@@ -411,36 +416,49 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
 
         # Layout principal
-        main_layout = QHBoxLayout(central_widget)
+        main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # Sistema de partículas como fundo
-        self.particle_system = ParticleSystem(central_widget)
-        self.particle_system.lower()  # Garante que fique atrás de tudo
+        # HeaderBar no topo
+        self.header_bar = HeaderBar()
+        main_layout.addWidget(self.header_bar)
 
-        # Sidebar
-        self.sidebar = Sidebar()
-        main_layout.addWidget(self.sidebar)
-
-        # Área de conteúdo
-        self.content_stack = QWidget()
-        self.content_stack.setObjectName("contentStack")
-        content_layout = QVBoxLayout(self.content_stack)
+        # Área de conteúdo (sidebar + conteúdo)
+        content_area = QWidget()
+        content_area.setObjectName("contentArea")
+        content_layout = QHBoxLayout(content_area)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
 
+        # Sidebar (mais estreita)
+        self.sidebar = Sidebar()
+        content_layout.addWidget(self.sidebar)
+
+        # Área de conteúdo principal
+        self.content_stack = QWidget()
+        self.content_stack.setObjectName("contentStack")
+        content_stack_layout = QVBoxLayout(self.content_stack)
+        content_stack_layout.setContentsMargins(0, 0, 0, 0)
+        content_stack_layout.setSpacing(0)
+
         # Dashboard
         self.dashboard = Dashboard(self.controller)
-        content_layout.addWidget(self.dashboard)
+        content_stack_layout.addWidget(self.dashboard)
 
-        main_layout.addWidget(self.content_stack)
+        content_layout.addWidget(self.content_stack)
 
-        # Conectar navegação
-        self.sidebar.navigation_changed.connect(self.on_navigation_changed)
+        main_layout.addWidget(content_area)
+
+        # Sistema de partículas como fundo - CORRIGIDO
+        # Agora o ParticleSystem é filho do central_widget e se expande
+        self.particle_system = ParticleSystem(central_widget)
 
         # Barra de status
         self.setup_status_bar()
+
+        # Conectar navegação
+        self.sidebar.navigation_changed.connect(self.on_navigation_changed)
 
     def on_navigation_changed(self, page_id):
         """Handler de navegação"""
@@ -470,8 +488,23 @@ class MainWindow(QMainWindow):
     def setup_status_bar(self):
         """Configura barra de status"""
         status_bar = QStatusBar()
-        status_bar.showMessage("Lunar Spoofer initialized - Particle system active")
+        status_bar.showMessage("Lunar Spoofer initialized - Carbon theme active")
         self.setStatusBar(status_bar)
+
+    def resizeEvent(self, event):
+        """Garante que o sistema de partículas ocupe toda a área"""
+        super().resizeEvent(event)
+        if hasattr(self, 'particle_system'):
+            # Fazer o sistema de partículas ocupar toda a área do centralWidget
+            self.particle_system.setGeometry(self.centralWidget().rect())
+
+    def initialize_particles(self):
+        """Inicializa e posiciona o sistema de partículas"""
+        if hasattr(self, 'particle_system'):
+            # Garantir que as partículas ocupem toda a área
+            self.particle_system.setGeometry(0, 0, self.width(), self.height())
+            # Forçar uma atualização
+            self.particle_system.update()
 
     def load_stylesheet(self):
         """Carrega CSS atualizado"""
@@ -551,122 +584,17 @@ class Dashboard(QWidget):
         self.setup_timers()
 
     def setup_ui(self):
-        """Configura dashboard com layout compacto"""
+        """Configura dashboard limpo sem header duplicado"""
         self.setObjectName("dashboard")
 
         # Layout principal
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(25, 25, 25, 25)
-        main_layout.setSpacing(20)
+        main_layout.setContentsMargins(30, 20, 30, 20)
+        main_layout.setSpacing(25)
 
-        # Header de estatísticas
-        stats_header = self.create_stats_header()
-        main_layout.addWidget(stats_header)
-
-        # Área de conteúdo
+        # Área de conteúdo principal
         content_area = self.create_content_area()
         main_layout.addWidget(content_area)
-
-    def create_stats_header(self):
-        """Cria header de estatísticas elegante"""
-        header_frame = QFrame()
-        header_frame.setObjectName("statsHeader")
-        header_frame.setFixedHeight(100)
-
-        layout = QGridLayout(header_frame)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setHorizontalSpacing(12)
-        layout.setVerticalSpacing(0)
-
-        # Cartões de sistema
-        self.cpu_card = self.create_stat_card("CPU", "0%", 0, "#ffffff")
-        self.memory_card = self.create_stat_card("MEMORY", "0%", 0, "#f0f0f0")
-        self.disk_card = self.create_stat_card("DISK", "0%", 0, "#e0e0e0")
-        self.status_card = self.create_status_card()
-
-        layout.addWidget(self.cpu_card, 0, 0)
-        layout.addWidget(self.memory_card, 0, 1)
-        layout.addWidget(self.disk_card, 0, 2)
-        layout.addWidget(self.status_card, 0, 3)
-
-        return header_frame
-
-    def create_stat_card(self, title, value, progress, color):
-        """Cria cartão de estatística minimalista"""
-        card = QFrame()
-        card.setObjectName("statCard")
-        card.setFixedHeight(80)
-
-        layout = QVBoxLayout(card)
-        layout.setContentsMargins(15, 12, 15, 12)
-        layout.setSpacing(6)
-
-        # Título
-        title_label = QLabel(title)
-        title_label.setObjectName("statTitle")
-        title_label.setFont(QFont("Segoe UI", 9))
-
-        # Valor
-        value_label = QLabel(value)
-        value_label.setObjectName("statValue")
-        value_label.setFont(QFont("Segoe UI", 14, QFont.Bold))
-
-        # Barra de progresso sutil
-        progress_bar = QProgressBar()
-        progress_bar.setObjectName("statProgress")
-        progress_bar.setValue(progress)
-        progress_bar.setFixedHeight(3)
-        progress_bar.setTextVisible(False)
-
-        # Aplicar cor
-        progress_bar.setProperty("progressColor", color)
-        value_label.setProperty("valueColor", color)
-
-        layout.addWidget(title_label)
-        layout.addWidget(value_label)
-        layout.addWidget(progress_bar)
-
-        return card
-
-    def create_status_card(self):
-        """Cria cartão de status elegante"""
-        card = QFrame()
-        card.setObjectName("statusCard")
-        card.setFixedHeight(80)
-
-        layout = QVBoxLayout(card)
-        layout.setContentsMargins(15, 12, 15, 12)
-        layout.setSpacing(6)
-
-        # Título
-        title_label = QLabel("STATUS")
-        title_label.setObjectName("statTitle")
-        title_label.setFont(QFont("Segoe UI", 9))
-
-        # Conteúdo do status
-        status_content = QWidget()
-        status_layout = QHBoxLayout(status_content)
-        status_layout.setContentsMargins(0, 0, 0, 0)
-        status_layout.setSpacing(8)
-
-        # Indicador de status
-        self.status_dot = QLabel("●")
-        self.status_dot.setObjectName("statusDot")
-        self.status_dot.setFont(QFont("Segoe UI", 12))
-
-        # Texto do status
-        self.status_text = QLabel("System Ready")
-        self.status_text.setObjectName("statusText")
-        self.status_text.setFont(QFont("Segoe UI", 11, QFont.Bold))
-
-        status_layout.addWidget(self.status_dot)
-        status_layout.addWidget(self.status_text)
-        status_layout.addStretch(1)
-
-        layout.addWidget(title_label)
-        layout.addWidget(status_content)
-
-        return card
 
     def create_content_area(self):
         """Cria área de conteúdo principal"""
@@ -675,7 +603,7 @@ class Dashboard(QWidget):
 
         layout = QHBoxLayout(content_frame)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(20)
+        layout.setSpacing(25)
 
         # Painel de ações principal (esquerda)
         action_panel = self.create_action_panel()
@@ -699,11 +627,17 @@ class Dashboard(QWidget):
         # Container do botão principal
         button_container = QFrame()
         button_container.setObjectName("buttonContainer")
-        button_container.setFixedHeight(180)
+        button_container.setFixedHeight(200)
 
         button_layout = QVBoxLayout(button_container)
         button_layout.setAlignment(Qt.AlignCenter)
         button_layout.setSpacing(15)
+
+        # Título
+        title_label = QLabel("SYSTEM SECURITY")
+        title_label.setObjectName("sectionTitle")
+        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setFont(QFont("Segoe UI", 16, QFont.Bold))
 
         # Botão de spoofing principal
         self.spoof_button = QPushButton("START SPOOFING")
@@ -718,6 +652,7 @@ class Dashboard(QWidget):
         self.spoof_status.setAlignment(Qt.AlignCenter)
         self.spoof_status.setWordWrap(True)
 
+        button_layout.addWidget(title_label)
         button_layout.addWidget(self.spoof_button)
         button_layout.addWidget(self.spoof_status)
 
@@ -727,20 +662,19 @@ class Dashboard(QWidget):
         return action_frame
 
     def create_compact_modules_panel(self):
-        """Cria painel de módulos ultra compacto com switches"""
+        """Cria painel de módulos compacto com switches"""
         modules_frame = QFrame()
         modules_frame.setObjectName("modulesPanel")
-        modules_frame.setFixedWidth(280)  # Largura fixa para compactação
-        modules_frame.setFixedHeight(160)  # Altura compacta
+        modules_frame.setFixedWidth(300)
 
         layout = QVBoxLayout(modules_frame)
-        layout.setContentsMargins(15, 15, 15, 15)
-        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
 
         # Título
-        title = QLabel("SPOOFING MODULES")
+        title = QLabel("SECURITY MODULES")
         title.setObjectName("modulesTitle")
-        title.setFont(QFont("Segoe UI", 12, QFont.Bold))
+        title.setFont(QFont("Segoe UI", 14, QFont.Bold))
 
         layout.addWidget(title)
 
@@ -748,7 +682,7 @@ class Dashboard(QWidget):
         switches_container = QWidget()
         switches_layout = QVBoxLayout(switches_container)
         switches_layout.setContentsMargins(0, 0, 0, 0)
-        switches_layout.setSpacing(8)
+        switches_layout.setSpacing(10)
 
         # Módulos com switches
         modules_data = [
@@ -773,16 +707,16 @@ class Dashboard(QWidget):
         """Cria uma linha compacta com switch"""
         row_widget = QWidget()
         row_widget.setObjectName(f"switchRow_{module_id}")
-        row_widget.setFixedHeight(32)
+        row_widget.setFixedHeight(35)
 
         layout = QHBoxLayout(row_widget)
-        layout.setContentsMargins(5, 0, 5, 0)
-        layout.setSpacing(10)
+        layout.setContentsMargins(10, 0, 10, 0)
+        layout.setSpacing(15)
 
         # Nome do módulo
         name_label = QLabel(name)
         name_label.setObjectName("moduleName")
-        name_label.setFont(QFont("Segoe UI", 10))
+        name_label.setFont(QFont("Segoe UI", 11))
 
         # Switch
         switch = SwitchButton()
@@ -801,55 +735,10 @@ class Dashboard(QWidget):
         status = "ENABLED" if checked else "DISABLED"
         print(f"Module {module_id}: {status}")
 
-        # Atualizar interface baseada no estado
-        self.update_module_states()
-
-    def update_module_states(self):
-        """Atualiza estados visuais dos módulos"""
-        # Aqui você pode adicionar lógica para atualizar a interface
-        # baseada nos estados dos switches
-        enabled_count = sum(1 for state in self.switch_states.values() if state)
-        self.status_text.setText(f"{enabled_count} modules enabled")
-
     def setup_timers(self):
         """Configura timers para atualização em tempo real"""
-        self.stats_timer = QTimer()
-        self.stats_timer.timeout.connect(self.update_system_stats)
-        self.stats_timer.start(2000)
-        self.update_system_stats()
-
-    def update_system_stats(self):
-        """Atualiza estatísticas do sistema"""
-        try:
-            # CPU
-            cpu_percent = psutil.cpu_percent(interval=0.1)
-            self.update_stat_card(self.cpu_card, f"{cpu_percent:.1f}%", int(cpu_percent))
-
-            # Memória
-            memory = psutil.virtual_memory()
-            memory_percent = memory.percent
-            self.update_stat_card(self.memory_card, f"{memory_percent:.1f}%", int(memory_percent))
-
-            # Disco
-            try:
-                disk = psutil.disk_usage('C:')
-                disk_percent = disk.percent
-                self.update_stat_card(self.disk_card, f"{disk_percent:.1f}%", int(disk_percent))
-            except:
-                self.update_stat_card(self.disk_card, "N/A", 0)
-
-        except Exception as e:
-            print(f"Stats update error: {e}")
-
-    def update_stat_card(self, card, value, progress):
-        """Atualiza cartão de estatística"""
-        value_label = card.findChild(QLabel, "statValue")
-        progress_bar = card.findChild(QProgressBar)
-
-        if value_label:
-            value_label.setText(value)
-        if progress_bar:
-            progress_bar.setValue(progress)
+        # Removido - stats agora estão no HeaderBar
+        pass
 
     def on_spoof_button_click(self):
         """Handler do botão de spoofing"""
@@ -875,10 +764,165 @@ class Dashboard(QWidget):
 
         QTimer.singleShot(2000, lambda: self.spoof_status.setText("System ready for spoofing protocol"))
 
-
 # src\ui\components\hardware_tab.py
 
 # TODO: Implement
+
+
+# src\ui\components\header_bar.py
+
+from PySide6.QtWidgets import (QWidget, QHBoxLayout, QLabel, QFrame,
+                              QVBoxLayout, QPushButton)
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QFont, QPixmap, QPainter
+import psutil
+
+class HeaderBar(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(120)
+        self.setup_ui()
+        self.setup_timers()
+
+    def setup_ui(self):
+        self.setObjectName("headerBar")
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(30, 15, 30, 15)
+        layout.setSpacing(25)
+
+        # Logo e título à esquerda
+        logo_section = self.create_logo_section()
+        layout.addWidget(logo_section)
+
+        # Stats no centro
+        stats_section = self.create_stats_section()
+        layout.addWidget(stats_section)
+
+        # Botão de ação à direita
+        action_section = self.create_action_section()
+        layout.addWidget(action_section)
+
+    def create_logo_section(self):
+        section = QFrame()
+        section.setObjectName("logoSection")
+        layout = QVBoxLayout(section)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(2)
+
+        title = QLabel("LUNAR SYSTEM PROTECTION")
+        title.setObjectName("headerTitle")
+        title.setFont(QFont("Segoe UI", 16, QFont.Bold))
+
+        subtitle = QLabel("Advanced Security Suite")
+        subtitle.setObjectName("headerSubtitle")
+        subtitle.setFont(QFont("Segoe UI", 10))
+
+        layout.addWidget(title)
+        layout.addWidget(subtitle)
+
+        return section
+
+    def create_stats_section(self):
+        section = QFrame()
+        section.setObjectName("statsSection")
+        layout = QHBoxLayout(section)
+        layout.setContentsMargins(20, 8, 20, 8)
+        layout.setSpacing(25)
+
+        # CPU
+        self.cpu_stat = self.create_stat_widget("CPU", "0%", "#50E3C2")
+        layout.addWidget(self.cpu_stat)
+
+        # Memory
+        self.memory_stat = self.create_stat_widget("MEMORY", "0%", "#4A90E2")
+        layout.addWidget(self.memory_stat)
+
+        # Disk
+        self.disk_stat = self.create_stat_widget("DISK", "0%", "#B8E986")
+        layout.addWidget(self.disk_stat)
+
+        # Status
+        self.status_stat = self.create_stat_widget("STATUS", "READY", "#FF6B6B")
+        layout.addWidget(self.status_stat)
+
+        return section
+
+    def create_stat_widget(self, title, value, color):
+        widget = QFrame()
+        widget.setObjectName("statWidget")
+        widget.setFixedSize(90, 60)
+
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 5, 0, 5)
+        layout.setSpacing(3)
+        layout.setAlignment(Qt.AlignCenter)
+
+        title_label = QLabel(title)
+        title_label.setObjectName("statTitle")
+        title_label.setFont(QFont("Segoe UI", 9, QFont.Medium))
+        title_label.setAlignment(Qt.AlignCenter)
+
+        value_label = QLabel(value)
+        value_label.setObjectName("statValue")
+        value_label.setFont(QFont("Segoe UI", 14, QFont.Bold))
+        value_label.setAlignment(Qt.AlignCenter)
+        value_label.setStyleSheet(f"color: {color};")
+
+        layout.addWidget(title_label)
+        layout.addWidget(value_label)
+
+        return widget
+
+    def create_action_section(self):
+        section = QFrame()
+        section.setObjectName("actionSection")
+        layout = QVBoxLayout(section)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(5)
+
+        self.launch_button = QPushButton("LAUNCH SECURITY")
+        self.launch_button.setObjectName("launchButton")
+        self.launch_button.setFixedSize(160, 35)
+        self.launch_button.setCursor(Qt.PointingHandCursor)
+
+        version_label = QLabel("Lunar Client 1.0.8")
+        version_label.setObjectName("versionLabel")
+        version_label.setAlignment(Qt.AlignCenter)
+        version_label.setFont(QFont("Segoe UI", 9))
+
+        layout.addWidget(self.launch_button)
+        layout.addWidget(version_label)
+
+        return section
+
+    def setup_timers(self):
+        self.stats_timer = QTimer()
+        self.stats_timer.timeout.connect(self.update_system_stats)
+        self.stats_timer.start(2000)
+        self.update_system_stats()
+
+    def update_system_stats(self):
+        try:
+            # CPU
+            cpu_percent = psutil.cpu_percent(interval=0.1)
+            self.cpu_stat.findChild(QLabel, "statValue").setText(f"{cpu_percent:.0f}%")
+
+            # Memória
+            memory = psutil.virtual_memory()
+            memory_percent = memory.percent
+            self.memory_stat.findChild(QLabel, "statValue").setText(f"{memory_percent:.0f}%")
+
+            # Disco
+            try:
+                disk = psutil.disk_usage('C:')
+                disk_percent = disk.percent
+                self.disk_stat.findChild(QLabel, "statValue").setText(f"{disk_percent:.0f}%")
+            except:
+                self.disk_stat.findChild(QLabel, "statValue").setText("N/A")
+
+        except Exception as e:
+            print(f"Stats update error: {e}")
 
 
 # src\ui\components\network_selector.py
@@ -889,10 +933,9 @@ class Dashboard(QWidget):
 # src\ui\components\particles.py
 
 import random
-import math
 from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Qt, QTimer, QPointF
-from PySide6.QtGui import QPainter, QColor, QPen, QBrush, QRadialGradient
+from PySide6.QtGui import QPainter, QColor, QBrush
 
 class Particle:
     def __init__(self, x, y, size, color, speed_x, speed_y, opacity):
@@ -908,52 +951,66 @@ class Particle:
         self.fade_speed = random.uniform(0.005, 0.02)
 
 class ParticleSystem(QWidget):
-    def __init__(self, parent=None, particle_count=80):
+    def __init__(self, parent=None, particle_count=60):
         super().__init__(parent)
         self.particles = []
+        self.particle_count = particle_count
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_particles)
-        self.timer.start(16)  # ~60 FPS
+        self.timer.start(33)  # ~30 FPS
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
 
-        # Inicializar partículas
-        self.init_particles(particle_count)
+        # Inicializar partículas apenas quando o widget for mostrado
+        self.initialized = False
+
+    def showEvent(self, event):
+        """Inicializa partículas quando o widget é mostrado"""
+        if not self.initialized:
+            self.init_particles(self.particle_count)
+            self.initialized = True
+        super().showEvent(event)
 
     def init_particles(self, count):
+        """Inicializa partículas distribuídas por toda a área"""
         width = self.width() if self.width() > 0 else 800
         height = self.height() if self.height() > 0 else 600
 
-        # Cores estelares - tons de branco e azul claro
+        # Cores sutis para tema lunar
         colors = [
-            QColor(255, 255, 255),  # Branco puro
+            QColor(255, 255, 255),  # Branco
             QColor(240, 240, 255),  # Branco azulado
-            QColor(255, 255, 240),  # Branco amarelado (estrelas quentes)
             QColor(220, 230, 255),  # Azul muito claro
-            QColor(255, 240, 220),  # Laranja muito claro
+            QColor(255, 250, 240),  # Branco amarelado sutil
         ]
 
+        self.particles = []
         for _ in range(count):
+            # Distribuir partículas por toda a área
             x = random.uniform(0, width)
             y = random.uniform(0, height)
-            size = random.uniform(1.0, 3.0)
+            size = random.uniform(0.8, 2.0)
             color = random.choice(colors)
 
-            # Velocidade baseada no tamanho (partículas maiores se movem mais devagar)
-            base_speed = 0.3
-            speed_factor = 1.0 / (size * 0.8)
-            speed_x = random.uniform(-base_speed, base_speed) * speed_factor
-            speed_y = random.uniform(-base_speed, base_speed) * speed_factor
+            # Velocidades mais lentas e variadas
+            speed_x = random.uniform(-0.15, 0.15)
+            speed_y = random.uniform(-0.15, 0.15)
 
-            opacity = random.uniform(0.2, 0.8)
+            # Opacidade mais visível
+            opacity = random.uniform(0.2, 0.6)
 
             self.particles.append(Particle(x, y, size, color, speed_x, speed_y, opacity))
 
     def update_particles(self):
-        if not self.isVisible():
+        """Atualiza posição e estado das partículas"""
+        if not self.isVisible() or not self.initialized:
             return
 
         width = self.width()
         height = self.height()
+
+        # Se o tamanho mudou significativamente, reinicializar partículas
+        if width <= 0 or height <= 0:
+            return
 
         for particle in self.particles:
             # Atualizar posição
@@ -962,6 +1019,8 @@ class ParticleSystem(QWidget):
 
             # Efeito de fade pulsante
             particle.opacity += particle.fade_speed * particle.fade_direction
+
+            # Garantir que a opacidade fique dentro dos limites válidos
             if particle.opacity >= particle.original_opacity:
                 particle.opacity = particle.original_opacity
                 particle.fade_direction = -1
@@ -970,51 +1029,64 @@ class ParticleSystem(QWidget):
                 particle.fade_direction = 1
 
             # Reposicionar partículas que saem da tela
-            if particle.x < -10:
-                particle.x = width + 10
-            elif particle.x > width + 10:
-                particle.x = -10
+            if particle.x < -50:
+                particle.x = width + 50
+                particle.y = random.uniform(0, height)
+            elif particle.x > width + 50:
+                particle.x = -50
+                particle.y = random.uniform(0, height)
 
-            if particle.y < -10:
-                particle.y = height + 10
-            elif particle.y > height + 10:
-                particle.y = -10
+            if particle.y < -50:
+                particle.y = height + 50
+                particle.x = random.uniform(0, width)
+            elif particle.y > height + 50:
+                particle.y = -50
+                particle.x = random.uniform(0, width)
 
         self.update()
 
     def paintEvent(self, event):
+        """Desenha as partículas"""
+        if not self.initialized:
+            return
+
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
         for particle in self.particles:
-            # Criar gradiente radial para efeito de brilho
-            gradient = QRadialGradient(particle.x, particle.y, particle.size * 2)
+            # Garantir que a opacidade esteja dentro do range válido
+            opacity = max(0.05, min(1.0, particle.opacity))
+
             color = QColor(particle.color)
-            color.setAlphaF(particle.opacity)
-            gradient.setColorAt(0, color)
-            gradient.setColorAt(1, QColor(255, 255, 255, 0))
+            color.setAlphaF(opacity)
 
             painter.setPen(Qt.NoPen)
-            painter.setBrush(QBrush(gradient))
-            painter.drawEllipse(QPointF(particle.x, particle.y), particle.size * 2, particle.size * 2)
+            painter.setBrush(QBrush(color))
 
-            # Núcleo da partícula
-            core_color = QColor(255, 255, 255)
-            core_color.setAlphaF(particle.opacity * 1.5)
-            painter.setBrush(QBrush(core_color))
-            painter.drawEllipse(QPointF(particle.x, particle.y), particle.size * 0.5, particle.size * 0.5)
+            # Desenhar partícula
+            painter.drawEllipse(QPointF(particle.x, particle.y), particle.size, particle.size)
 
     def resizeEvent(self, event):
-        # Ajustar partículas para novo tamanho
-        if event.oldSize().width() > 0 and event.oldSize().height() > 0:
-            scale_x = event.size().width() / event.oldSize().width()
-            scale_y = event.size().height() / event.oldSize().height()
-
-            for particle in self.particles:
-                particle.x *= scale_x
-                particle.y *= scale_y
-
+        """Reinicializa partículas quando o tamanho muda"""
         super().resizeEvent(event)
+        if self.initialized:
+            # Manter as partículas existentes, mas ajustar suas posições
+            # para o novo tamanho
+            old_width = event.oldSize().width()
+            old_height = event.oldSize().height()
+            new_width = event.size().width()
+            new_height = event.size().height()
+
+            if old_width > 0 and old_height > 0:
+                scale_x = new_width / old_width
+                scale_y = new_height / old_height
+
+                for particle in self.particles:
+                    particle.x *= scale_x
+                    particle.y *= scale_y
+            else:
+                # Se não tinha tamanho anterior, reinicializar
+                self.init_particles(self.particle_count)
 
 
 # src\ui\components\progress_indicator.py
@@ -1039,8 +1111,8 @@ class Sidebar(QWidget):
         self.setup_ui()
 
     def setup_ui(self):
-        """Configura a sidebar minimalista"""
-        self.setFixedWidth(260)
+        """Configura a sidebar mais estreita"""
+        self.setFixedWidth(200)  # Reduzida de 260 para 200
         self.setObjectName("sidebar")
 
         # Layout principal
@@ -1048,9 +1120,7 @@ class Sidebar(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # Header elegante
-        header = self.create_header()
-        layout.addWidget(header)
+        # Header removido (agora está no HeaderBar)
 
         # Navegação limpa
         nav_buttons = self.create_navigation_buttons()
@@ -1095,16 +1165,16 @@ class Sidebar(QWidget):
         nav_frame.setObjectName("navFrame")
 
         layout = QVBoxLayout(nav_frame)
-        layout.setContentsMargins(15, 10, 15, 10)
+        layout.setContentsMargins(10, 20, 10, 20)  # Margens reduzidas
         layout.setSpacing(2)
 
-        # Botões atualizados conforme solicitado
+        # Botões atualizados
         nav_items = [
             ("Dashboard", "dashboard", True),
-            ("Tools", "tools", False),
+            ("Security Tools", "tools", False),
             ("System Info", "system_info", False),
             ("Settings", "settings", False),
-            ("Discord", "discord", False)
+            ("Support", "support", False)
         ]
 
         self.nav_buttons = {}
@@ -1113,11 +1183,8 @@ class Sidebar(QWidget):
             btn = QPushButton(text)
             btn.setObjectName(f"navButton_{page_id}")
             btn.setCursor(Qt.PointingHandCursor)
-            btn.setFixedHeight(42)
+            btn.setFixedHeight(38)  # Altura reduzida
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-
-            # Estilo minimalista
-            btn.setProperty("class", "nav-btn")
 
             # Conectar sinal
             btn.clicked.connect(lambda checked, pid=page_id: self.on_navigation_click(pid))
@@ -1135,27 +1202,20 @@ class Sidebar(QWidget):
         """Cria rodapé minimalista"""
         footer_frame = QFrame()
         footer_frame.setObjectName("footerFrame")
-        footer_frame.setFixedHeight(80)
+        footer_frame.setFixedHeight(60)
 
         layout = QVBoxLayout(footer_frame)
-        layout.setContentsMargins(15, 10, 15, 15)
-        layout.setSpacing(8)
-
-        # Versão
-        version_label = QLabel("v1.0.0")
-        version_label.setObjectName("versionLabel")
-        version_label.setAlignment(Qt.AlignCenter)
-        version_label.setFont(QFont("Segoe UI", 8))
+        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setSpacing(4)
 
         # Status
-        status_label = QLabel("● READY")
+        status_label = QLabel("● SECURE")
         status_label.setObjectName("statusLabel")
         status_label.setAlignment(Qt.AlignCenter)
         status_label.setFont(QFont("Segoe UI", 9, QFont.Bold))
 
         layout.addStretch(1)
         layout.addWidget(status_label)
-        layout.addWidget(version_label)
 
         return footer_frame
 
@@ -1285,80 +1345,108 @@ class SwitchButton(QWidget):
 
 # src\ui\styles\main.css
 
-/* ===== VARIÁVEIS DO TEMA ESTELAR ATUALIZADO ===== */
-:root {
-    /* Cores principais - Branco/Cinza sobre Preto */
-    --stellar-white: #ffffff;
-    --stellar-light: #f0f0f0;
-    --stellar-gray: #b0b0b0;
-    --stellar-dark: #888888;
-
-    /* Cores de fundo - Preto profundo */
-    --void-black: #000000;
-    --cosmic-gray: #0a0a0a;
-    --space-dark: #111111;
-    --graphite-100: #1a1a1a;
-    --graphite-200: #222222;
-    --graphite-300: #2a2a2a;
-
-    /* Acentos estelares */
-    --star-blue: #4a90e2;
-    --nebula-cyan: #50e3c2;
-    --comet-purple: #6b21ff;
-
-    /* Efeitos de brilho */
-    --starlight: 0 0 15px rgba(255, 255, 255, 0.3);
-    --supernova: 0 0 30px rgba(74, 144, 226, 0.5);
-}
+/* ===== TEMA LUNAR - PRETO SUAVE ===== */
 
 /* ===== ESTILOS GERAIS ===== */
 QMainWindow {
-    background: var(--void-black);
-    color: var(--stellar-white);
-    font-family: "Segoe UI", "SF Pro Display", system-ui;
+    background: #0d0d0d;
+    color: #ffffff;
+    font-family: "Segoe UI", system-ui;
     font-size: 13px;
 }
 
 QWidget {
     background: transparent;
-    color: var(--stellar-white);
+    color: #ffffff;
+    border: none;
 }
 
-/* ===== SISTEMA DE PARTÍCULAS ===== */
-ParticleSystem {
+/* ===== HEADER BAR ===== */
+#headerBar {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0a0a0a, stop:1 #151515);
+    border-bottom: 1px solid #1e1e1e;
+}
+
+#logoSection {
     background: transparent;
     border: none;
 }
 
-/* ===== SIDEBAR ELEGANTE ===== */
-#sidebar {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                                stop:0 var(--graphite-100),
-                                stop:1 var(--graphite-200));
-    border-right: 1px solid var(--graphite-300);
-}
-
-#sidebarHeader {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                                stop:0 var(--graphite-200),
-                                stop:1 var(--graphite-300));
-    border-bottom: 1px solid var(--graphite-300);
-}
-
-#logoLabel {
-    color: var(--stellar-white);
+#headerTitle {
+    color: #ffffff;
     background: transparent;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+#headerSubtitle {
+    color: #a0a0a0;
+    background: transparent;
+    font-size: 10px;
     letter-spacing: 1px;
 }
 
-#subtitleLabel {
-    color: var(--stellar-gray);
+#statsSection {
+    background: rgba(30, 30, 30, 0.7);
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+}
+
+#statWidget {
     background: transparent;
-    font-size: 8px;
-    letter-spacing: 2px;
+    border: none;
+}
+
+#statTitle {
+    color: #a0a0a0;
+    background: transparent;
+    font-size: 9px;
+    font-weight: 500;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#statValue {
+    background: transparent;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+#actionSection {
+    background: transparent;
+    border: none;
+}
+
+#launchButton {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4a90e2, stop:1 #50e3c2);
+    color: #000000;
+    border: none;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+#launchButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #5a9fee, stop:1 #60f3d2);
+}
+
+#launchButton:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #3a80d2, stop:1 #40d3b2);
+}
+
+#versionLabel {
+    color: #666666;
+    background: transparent;
+    font-size: 9px;
+}
+
+/* ===== SIDEBAR ===== */
+#sidebar {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0a0a0a, stop:1 #121212);
+    border-right: 1px solid #1e1e1e;
 }
 
 #navFrame {
@@ -1368,183 +1456,105 @@ ParticleSystem {
 
 QPushButton[navButton] {
     background: transparent;
-    color: var(--stellar-gray);
+    color: #a0a0a0;
     border: none;
-    border-radius: 6px;
-    padding: 12px 16px;
-    font-size: 12px;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin: 1px 4px;
+    font-size: 11px;
     font-weight: 500;
     text-align: left;
 }
 
 QPushButton[navButton]:hover {
     background: rgba(255, 255, 255, 0.05);
-    color: var(--stellar-white);
-    border-left: 2px solid var(--stellar-white);
+    color: #ffffff;
 }
 
 QPushButton[navButton][active="true"] {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--stellar-white);
-    border-left: 2px solid var(--stellar-white);
+    background: rgba(74, 144, 226, 0.15);
+    color: #4a90e2;
+    border-left: 2px solid #4a90e2;
     font-weight: 600;
 }
 
 #footerFrame {
-    background: rgba(26, 26, 26, 0.8);
-    border-top: 1px solid var(--graphite-300);
-    border-radius: 8px 8px 0 0;
-}
-
-#versionLabel {
-    color: var(--stellar-dark);
-    background: transparent;
-    font-size: 8px;
+    background: rgba(10, 10, 10, 0.8);
+    border-top: 1px solid #1e1e1e;
 }
 
 #statusLabel {
-    color: var(--nebula-cyan);
+    color: #50e3c2;
     background: transparent;
     font-size: 9px;
-    font-weight: bold;
+    font-weight: 600;
 }
 
-/* ===== DASHBOARD PROFISSIONAL ===== */
+/* ===== DASHBOARD ===== */
 #dashboard {
     background: transparent;
 }
 
-/* Header de estatísticas */
-#statsHeader {
+#contentFrame {
     background: transparent;
     border: none;
 }
 
-#statCard, #statusCard {
-    background: rgba(26, 26, 26, 0.7);
-    border: 1px solid var(--graphite-300);
-    border-radius: 8px;
-    backdrop-filter: blur(10px);
-}
-
-#statCard:hover, #statusCard:hover {
-    border: 1px solid var(--stellar-white);
-    box-shadow: var(--starlight);
-}
-
-#statTitle {
-    color: var(--stellar-gray);
+#actionPanel {
     background: transparent;
-    font-size: 9px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-#statValue {
-    color: var(--stellar-white);
-    background: transparent;
-    font-size: 14px;
-    font-weight: bold;
-}
-
-#statValue[valueColor] {
-    color: attr(valueColor);
-}
-
-#statProgress {
-    background: var(--graphite-200);
     border: none;
-    border-radius: 2px;
-    height: 3px;
-}
-
-#statProgress::chunk {
-    background: var(--stellar-white);
-    border-radius: 2px;
-}
-
-#statProgress[progressColor]::chunk {
-    background-color: attr(progressColor);
-}
-
-#statusDot {
-    color: var(--nebula-cyan);
-    background: transparent;
-    font-size: 10px;
-}
-
-#statusText {
-    color: var(--stellar-white);
-    background: transparent;
-    font-size: 11px;
-    font-weight: 600;
-}
-
-/* Painéis principais */
-#actionPanel, #modulesPanel {
-    background: transparent;
 }
 
 #buttonContainer {
-    background: rgba(26, 26, 26, 0.7);
-    border: 1px solid var(--graphite-300);
+    background: rgba(30, 30, 30, 0.7);
+    border: 1px solid #2a2a2a;
     border-radius: 12px;
-    backdrop-filter: blur(10px);
 }
 
 #mainSpoofButton {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                                stop:0 var(--stellar-white),
-                                stop:1 var(--stellar-light));
-    color: var(--void-black);
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4a90e2, stop:1 #50e3c2);
+    color: #000000;
     border: none;
     border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    padding: 15px 30px;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 14px 28px;
     letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
 
 #mainSpoofButton:hover {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                                stop:0 var(--stellar-light),
-                                stop:1 var(--stellar-white));
-    box-shadow: var(--starlight);
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #5a9fee, stop:1 #60f3d2);
 }
 
 #mainSpoofButton:pressed {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                                stop:0 var(--stellar-gray),
-                                stop:1 var(--stellar-light));
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #3a80d2, stop:1 #40d3b2);
 }
 
 #mainSpoofButton:disabled {
-    background: var(--graphite-200);
-    color: var(--stellar-dark);
-    box-shadow: none;
+    background: #2a2a2a;
+    color: #666666;
 }
 
 #spoofStatus {
-    color: var(--stellar-gray);
+    color: #a0a0a0;
     background: transparent;
     font-size: 11px;
     padding: 8px;
 }
 
-/* Módulos compactos com switches */
+/* ===== MÓDULOS ===== */
 #modulesPanel {
-    background: rgba(26, 26, 26, 0.7);
-    border: 1px solid var(--graphite-300);
+    background: rgba(30, 30, 30, 0.7);
+    border: 1px solid #2a2a2a;
     border-radius: 12px;
-    backdrop-filter: blur(10px);
 }
 
 #modulesTitle {
-    color: var(--stellar-white);
+    color: #ffffff;
     background: transparent;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 1px;
 }
@@ -1552,68 +1562,101 @@ QPushButton[navButton][active="true"] {
 QFrame[switchRow] {
     background: transparent;
     border: none;
+    border-radius: 4px;
+}
+
+QFrame[switchRow]:hover {
+    background: rgba(255, 255, 255, 0.03);
 }
 
 #moduleName {
-    color: var(--stellar-white);
+    color: #e0e0e0;
     background: transparent;
     font-size: 11px;
     font-weight: 500;
 }
 
-/* Estilos para o SwitchButton customizado */
+/* ===== SWITCH BUTTON ===== */
 SwitchButton {
     background-color: #333333;
-    border: 1px solid #555555;
-    border-radius: 12px;
+    border: 2px solid #444444;
+    border-radius: 10px;
+}
+
+SwitchButton:hover {
+    background-color: #3a3a3a;
+    border: 2px solid #4a4a4a;
 }
 
 SwitchButton:checked {
     background-color: #4a90e2;
-    border: 1px solid #357abd;
+    border: 2px solid #4a90e2;
+}
+
+SwitchButton:checked:hover {
+    background-color: #5a9fee;
+    border: 2px solid #5a9fee;
 }
 
 SwitchButton::handle {
     background-color: #ffffff;
     border: none;
-    border-radius: 9px;
+    border-radius: 8px;
 }
 
-/* ===== BARRA DE STATUS ESTELAR ===== */
+/* ===== BARRA DE STATUS ===== */
 QStatusBar {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                                stop:0 var(--graphite-100),
-                                stop:1 var(--graphite-200));
-    color: var(--stellar-gray);
-    border-top: 1px solid var(--graphite-300);
-    padding: 8px 20px;
+    background: #0a0a0a;
+    color: #888888;
+    border-top: 1px solid #1e1e1e;
+    padding: 6px 15px;
     font-size: 10px;
 }
 
-QStatusBar::item {
-    border: none;
-}
-
-/* ===== SCROLLBARS MINIMALISTAS ===== */
+/* ===== SCROLLBARS ===== */
 QScrollBar:vertical {
-    background: var(--graphite-100);
+    background: #1a1a1a;
     width: 8px;
     margin: 0px;
+    border-radius: 4px;
 }
 
 QScrollBar::handle:vertical {
-    background: var(--stellar-gray);
+    background: #333333;
     border-radius: 4px;
     min-height: 20px;
 }
 
 QScrollBar::handle:vertical:hover {
-    background: var(--stellar-white);
+    background: #444444;
 }
 
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+/* Sistema de partículas */
+ParticleSystem {
+    background: transparent;
     border: none;
-    background: none;
+}
+
+/* Garantir que as partículas fiquem atrás do conteúdo */
+#centralWidget {
+    position: relative;
+}
+
+ParticleSystem {
+    background: transparent;
+    border: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: -1;
+}
+
+/* Ajustar z-index dos outros elementos */
+#headerBar, #sidebar, #contentStack {
+    position: relative;
+    z-index: 1;
 }
 
 
