@@ -107,28 +107,25 @@ class MiniGraphWidget(QWidget):
             buffer_painter.setBrush(v_grad)
             buffer_painter.drawPolygon(polygon)
 
-            # Etapa 2: Aplicar Máscara de Gradiente Horizontal (fade da esquerda)
-            # (Modo DestinationIn: Onde a máscara for transparente, o desenho some)
+            # **ETAPA 2: APLICAR FADE "EIXO X" (Esquerda E Direita)**
             buffer_painter.setCompositionMode(QPainter.CompositionMode_DestinationIn)
 
             h_grad_mask = QLinearGradient(0, 0, w, 0)
             h_grad_mask.setColorAt(0.0, QColor(0,0,0,0))   # Esquerda = Transparente
-            h_grad_mask.setColorAt(0.5, QColor(0,0,0,128)) # Meio = Semi-opaco
-            h_grad_mask.setColorAt(1.0, QColor(0,0,0,255)) # Direita = Opaco
+            h_grad_mask.setColorAt(0.8, QColor(0,0,0,255)) # 80% = Opaco (Foco)
+            h_grad_mask.setColorAt(1.0, QColor(0,0,0,0))   # Direita = Transparente
 
             buffer_painter.fillRect(self.rect(), h_grad_mask)
-            buffer_painter.end() # Finaliza o desenho no buffer
+            buffer_painter.end()
 
             # --- 5. Desenhar o Buffer na Tela ---
             painter.drawImage(0, 0, buffer)
 
-            # --- 6. Desenhar a Linha (com Gradiente Horizontal) ---
-
-            # A linha só precisa do fade horizontal (esquerda para direita)
+            # --- 6. Desenhar a Linha (com Fade Esquerda/Direita) ---
             h_grad_line = QLinearGradient(0, 0, w, 0)
             h_grad_line.setColorAt(0.0, faded_color) # Esquerda = Transparente
-            h_grad_line.setColorAt(0.5, solid_color) # Meio
-            h_grad_line.setColorAt(1.0, solid_color) # Direita = Sólido
+            h_grad_line.setColorAt(0.8, solid_color) # 80% = Sólido (Foco)
+            h_grad_line.setColorAt(1.0, faded_color) # Direita = Transparente
 
             pen = painter.pen()
             pen.setBrush(h_grad_line)
