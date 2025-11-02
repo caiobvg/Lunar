@@ -2,7 +2,8 @@
 
 from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Qt, QPointF, QRectF
-from PySide6.QtGui import QPainter, QColor, QBrush, QPolygonF, QLinearGradient
+from PySide6.QtGui import (QPainter, QColor, QBrush, QPolygonF,
+                           QLinearGradient, QRadialGradient, QImage) # [NOVO] QImage
 
 class MiniGraphWidget(QWidget):
     def __init__(self, parent=None, max_points=30):
@@ -13,7 +14,7 @@ class MiniGraphWidget(QWidget):
         self.setFixedSize(100, 40)
 
         # O "zoom" vertical mínimo que você sugeriu
-        self.MIN_VERTICAL_RANGE = 20.0
+        self.MIN_VERTICAL_RANGE = 30
 
     def set_color(self, color_hex):
         """Define a cor principal do gráfico."""
@@ -21,9 +22,9 @@ class MiniGraphWidget(QWidget):
         self.update()
 
     def add_data_point(self, value):
-        """Adiciona um novo ponto de dado (0 a 100) e atualiza o gráfico."""
+        """Adiciona um novo ponto de dado e atualiza o gráfico."""
         if value < 0: value = 0
-        if value > 100: value = 100
+        # if value > 100: value = 100  <-- [REMOVIDO]
 
         self.data_points.append(value)
 
@@ -33,7 +34,7 @@ class MiniGraphWidget(QWidget):
         self.update() # Solicita o redesenho
 
     def paintEvent(self, event):
-        """Desenha o gráfico com scaling suave baseado na média móvel."""
+        """Desenha o gráfico com scaling instantâneo E FADE NOS DOIS EIXOS."""
         try:
             painter = QPainter(self)
             painter.setRenderHint(QPainter.Antialiasing)
@@ -44,81 +45,96 @@ class MiniGraphWidget(QWidget):
             if not self.data_points:
                 return
 
-            # --- 1. Lógica de Scaling Suave (Baseada na Média) ---
-
-            # Calcular a média dos dados atuais
-            data_avg = sum(self.data_points) / len(self.data_points)
-
-            # Definir a janela de 20% centralizada na média
+            # --- 1. Lógica de Scaling Instantâneo (Baseado no último ponto) ---
+            current_value = self.data_points[-1]
             half_range = self.MIN_VERTICAL_RANGE / 2.0
-            graph_min = data_avg - half_range
-            graph_max = data_avg + half_range
+            graph_min = current_value - half_range
+            graph_max = current_value + half_range
 
-            # --- 2. Clamping (Travar a escala entre 0 e 100) ---
-
-            # Se o máximo estourou 100, desce a janela
-            if graph_max > 100.0:
-                overshoot = graph_max - 100.0
-                graph_max = 100.0
-                graph_min -= overshoot
-
-            # Se o mínimo estourou 0, sobe a janela
+            # --- 2. Clamping (Travar a escala apenas em 0) ---
             if graph_min < 0.0:
                 overshoot = 0.0 - graph_min
                 graph_min = 0.0
                 graph_max += overshoot
 
-            # Clamp final (se o range original for > 100, o que não deve acontecer)
-            if graph_max > 100.0: graph_max = 100.0
-
-
             # --- 3. Normalização e Cálculo do Polígono ---
-
-            # Garantir que o range nunca seja zero (evita divisão por zero)
             current_range = graph_max - graph_min
-            if current_range == 0:
-                current_range = 100.0 # Se for tudo 0, usa 0-100
-                graph_min = 0.0
+            if current_range < 0.01:
+                current_range = self.MIN_VERTICAL_RANGE
 
             polygon = QPolygonF()
             polygon.append(QPointF(0, h)) # Canto inferior esquerdo
 
+            line_polygon = QPolygonF() # Polígono apenas para a linha
+
             step_x = w / (self.max_points - 1)
 
             for i, value in enumerate(self.data_points):
-                # Normalizar o valor (0-1) usando a nova escala
                 normalized_y = (value - graph_min) / current_range
 
-                # Clamp de segurança (caso o ponto saia da escala no momento da transição)
+                # Clamp de segurança
                 if normalized_y < 0.0: normalized_y = 0.0
                 if normalized_y > 1.0: normalized_y = 1.0
 
-                # Inverter (Y=0 é o topo)
                 y = h - (normalized_y * h)
                 x = i * step_x
+
                 polygon.append(QPointF(x, y))
+                line_polygon.append(QPointF(x, y))
 
             polygon.append(QPointF(w, h)) # Canto inferior direito
 
-            # --- 4. Desenhar o Gradiente (Preenchimento) ---
-            gradient = QLinearGradient(0, 0, 0, h)
-            gradient.setColorAt(0, self.graph_color.lighter(120))
-            gradient.setColorAt(1, QColor(0, 0, 0, 0)) # Transparente
+            # Cores
+            solid_color = QColor(self.graph_color)
+            faded_color = QColor(self.graph_color)
+            faded_color.setAlphaF(0.0) # 0% opaco
 
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(QBrush(gradient))
-            painter.drawPolygon(polygon)
+            # --- 4. [ALTERADO] Desenhar o Preenchimento (Fill) em um Buffer ---
 
-            # --- 5. Desenhar a Linha (Contorno) ---
-            line_polygon = QPolygonF(polygon)
-            line_polygon.remove(0) # Remove canto inferior esquerdo
-            line_polygon.remove(line_polygon.count() - 1) # Remove canto inferior direito
+            # Criar buffer off-screen para aplicar os dois gradientes
+            buffer = QImage(self.size(), QImage.Format_ARGB32_Premultiplied)
+            buffer.fill(Qt.transparent)
+
+            buffer_painter = QPainter(buffer)
+            buffer_painter.setRenderHint(QPainter.Antialiasing)
+
+            # Etapa 1: Gradiente Vertical (de cima para baixo)
+            v_grad = QLinearGradient(0, 0, 0, h)
+            v_grad.setColorAt(0.0, solid_color.lighter(120)) # Cor no topo
+            v_grad.setColorAt(1.0, faded_color) # Transparente embaixo
+
+            buffer_painter.setPen(Qt.NoPen)
+            buffer_painter.setBrush(v_grad)
+            buffer_painter.drawPolygon(polygon)
+
+            # Etapa 2: Aplicar Máscara de Gradiente Horizontal (fade da esquerda)
+            # (Modo DestinationIn: Onde a máscara for transparente, o desenho some)
+            buffer_painter.setCompositionMode(QPainter.CompositionMode_DestinationIn)
+
+            h_grad_mask = QLinearGradient(0, 0, w, 0)
+            h_grad_mask.setColorAt(0.0, QColor(0,0,0,0))   # Esquerda = Transparente
+            h_grad_mask.setColorAt(0.5, QColor(0,0,0,128)) # Meio = Semi-opaco
+            h_grad_mask.setColorAt(1.0, QColor(0,0,0,255)) # Direita = Opaco
+
+            buffer_painter.fillRect(self.rect(), h_grad_mask)
+            buffer_painter.end() # Finaliza o desenho no buffer
+
+            # --- 5. Desenhar o Buffer na Tela ---
+            painter.drawImage(0, 0, buffer)
+
+            # --- 6. Desenhar a Linha (com Gradiente Horizontal) ---
+
+            # A linha só precisa do fade horizontal (esquerda para direita)
+            h_grad_line = QLinearGradient(0, 0, w, 0)
+            h_grad_line.setColorAt(0.0, faded_color) # Esquerda = Transparente
+            h_grad_line.setColorAt(0.5, solid_color) # Meio
+            h_grad_line.setColorAt(1.0, solid_color) # Direita = Sólido
 
             pen = painter.pen()
-            pen.setColor(self.graph_color)
+            pen.setBrush(h_grad_line)
             pen.setWidthF(1.5)
-            painter.setBrush(Qt.NoBrush)
             painter.setPen(pen)
+            painter.setBrush(Qt.NoBrush)
 
             painter.drawPolyline(line_polygon)
 
